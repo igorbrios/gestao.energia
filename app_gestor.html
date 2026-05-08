@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<!--
+  app_gestor.html  (v3)
+  CORRIGIDO: triângulo (badge) de alertas agora abre a aba de alertas ao clicar
+  CORRIGIDO: visitas não mostram ID do lote — mostram nome da espécie + corredor
+  NOVO: criar funcionário direto pelo app
+  Versão: 3.0 · Mai/2026
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3d2b">
+<title>Florescer · Gestão</title>
+<link rel="manifest" href="../manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v2:#1a3d2b;--v3:#2d6b45;--v4:#4caf70;--v5:#86d4a0;
+  --vg:#c8ecd4;--vp:#e8f5ec;--am:#c87c2a;--amc:#fef3e6;
+  --al:#b03020;--alc:#fdecea;--az:#2a5080;--azc:#e8f0fa;
+  --br:#fdfcf8;--ar:#f4f0e8;--ck:#e8e2d8;--pr:#1a1f1c;
+  --cz:#5a6860;--czl:#c8d8cc;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--ar);color:var(--pr);overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;background:var(--ar);}
+.statusbar{background:var(--v2);padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sb-hora{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--vg);}
+/* Badge de alertas — agora clicável */
+.alerta-badge{background:var(--al);color:white;border-radius:20px;padding:4px 12px;font-family:'DM Mono',monospace;font-size:10px;display:none;align-items:center;gap:5px;cursor:pointer;border:none;}
+.alerta-badge.vis{display:flex;}
+.tophead{background:var(--v2);padding:0 20px 14px;flex-shrink:0;}
+.tophead h1{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--vg);}
+.tophead-sub{font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,236,212,.4);letter-spacing:.1em;text-transform:uppercase;margin-top:3px;}
+/* Abas */
+.tab-bar{display:flex;background:var(--v2);border-top:1px solid rgba(255,255,255,.05);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.tab-bar::-webkit-scrollbar{display:none;}
+.tabi{flex:1;padding:9px 4px;text-align:center;cursor:pointer;border-bottom:2px solid transparent;min-width:56px;position:relative;}
+.tabi.on{border-bottom-color:var(--v4);}
+.tabi-ico{font-size:15px;display:block;margin-bottom:2px;}
+.tabi-lbl{font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.45);letter-spacing:.04em;white-space:nowrap;}
+.tabi.on .tabi-lbl{color:var(--v4);}
+.tabi-badge{position:absolute;top:4px;right:4px;background:var(--al);color:white;width:14px;height:14px;border-radius:50%;font-size:8px;display:none;align-items:center;justify-content:center;font-family:'DM Mono',monospace;}
+.tabi-badge.vis{display:flex;}
+.content{flex:1;overflow-y:auto;scrollbar-width:none;padding:10px 14px 80px;}
+.content::-webkit-scrollbar{display:none;}
+/* Bottom nav */
+.bottom-nav{background:var(--br);border-top:1px solid var(--czl);display:flex;padding:6px 0 20px;flex-shrink:0;}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px;text-decoration:none;}
+.nav-ico{font-size:20px;line-height:1;}
+.nav-lbl{font-size:9px;color:var(--cz);font-family:'DM Mono',monospace;letter-spacing:.04em;}
+.nav-i.on .nav-lbl{color:var(--v3);}
+/* Seção */
+.sec-titulo{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--cz);padding:8px 0 6px;display:flex;align-items:center;gap:8px;}
+.sec-titulo::after{content:'';flex:1;height:1px;background:var(--czl);}
+/* Cards equipe */
+.func-card{background:var(--br);border-radius:14px;border:1px solid var(--czl);margin-bottom:8px;overflow:hidden;cursor:pointer;}
+.func-card:active{box-shadow:0 4px 16px rgba(0,0,0,.1);}
+.func-top{display:flex;align-items:center;gap:10px;padding:12px 14px 8px;}
+.func-avatar{width:40px;height:40px;border-radius:50%;background:var(--v2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.func-info{flex:1;}
+.func-nome{font-size:14px;font-weight:600;color:var(--pr);}
+.func-nivel{font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-top:1px;}
+.func-direita{text-align:right;flex-shrink:0;}
+.func-score{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--v3);line-height:1;}
+.func-score-sub{font-family:'DM Mono',monospace;font-size:8px;color:var(--cz);}
+.func-chips{display:flex;gap:5px;flex-wrap:wrap;padding:0 14px 10px;}
+.fchip{font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:4px;}
+.fchip.ok{background:var(--vp);color:var(--v3);}
+.fchip.absent{background:var(--ck);color:var(--cz);}
+.fchip.am{background:var(--amc);color:var(--am);}
+.fchip.al{background:var(--alc);color:var(--al);}
+/* Visitas */
+.visita-check-card{background:var(--br);border-radius:12px;border:1px solid var(--czl);margin-bottom:8px;overflow:hidden;}
+.vc-head{display:flex;gap:10px;align-items:center;padding:11px 13px 8px;}
+.vc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.vc-dot.muito_bem{background:var(--v4);}
+.vc-dot.ok{background:var(--czl);}
+.vc-dot.atencao{background:var(--am);}
+.vc-dot.problema{background:var(--al);animation:pd 1.4s infinite;}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.3}}
+.vc-info{flex:1;}
+.vc-lote{font-size:13px;font-weight:600;color:var(--pr);}
+.vc-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-top:2px;}
+.vc-estado{font-size:11px;font-weight:500;}
+.vc-estado.muito_bem{color:var(--v3);}
+.vc-estado.ok{color:var(--cz);}
+.vc-estado.atencao{color:var(--am);}
+.vc-estado.problema{color:var(--al);}
+.vc-obs{padding:0 13px 8px;font-size:12px;color:var(--cz);line-height:1.5;}
+.vc-acoes{padding:8px 13px;border-top:1px solid var(--czl);display:flex;gap:6px;flex-wrap:wrap;}
+.vc-btn{padding:7px 12px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;flex-shrink:0;}
+.vc-btn.ok{background:var(--vp);color:var(--v3);}
+.vc-btn.ver{background:var(--ar);color:var(--cz);border:1px solid var(--czl);}
+.vc-btn.enc{background:var(--amc);color:var(--am);}
+/* Atenção */
+.atencao-card{border-radius:12px;border:1.5px solid;padding:10px 12px;margin-bottom:6px;cursor:pointer;}
+.atencao-card.historico_ocorrencia{background:var(--alc);border-color:rgba(176,48,32,.3);}
+.atencao-card.especie_sensivel{background:var(--amc);border-color:rgba(200,124,42,.3);}
+.atencao-card.zona_inadequada{background:#fff8e6;border-color:#f0d070;}
+.atencao-card.gestor_definiu{background:var(--azc);border-color:rgba(42,80,128,.25);}
+/* Tarefas */
+.tarefa-card{background:var(--br);border-radius:12px;border:1px solid var(--czl);margin-bottom:6px;overflow:hidden;}
+.tarefa-barra{height:3px;}
+.tarefa-barra.urgente{background:var(--al);}
+.tarefa-barra.alta{background:var(--am);}
+.tarefa-barra.normal{background:var(--v4);}
+.tarefa-barra.baixa{background:var(--czl);}
+.tarefa-body{padding:10px 12px;}
+.tarefa-titulo{font-size:13px;font-weight:600;color:var(--pr);margin-bottom:5px;}
+.tarefa-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.ttag{font-family:'DM Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;}
+.ttag.verde{background:var(--vp);color:var(--v3);}
+.ttag.am{background:var(--amc);color:var(--am);}
+.ttag.al{background:var(--alc);color:var(--al);}
+.ttag.ck{background:var(--ck);color:var(--cz);}
+.tarefa-acoes{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--czl);}
+.tarefa-btn{flex:1;padding:7px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;}
+.tarefa-btn.p{background:var(--v2);color:white;}
+.tarefa-btn.s{background:var(--ar);color:var(--cz);}
+/* Alertas */
+.alerta-card{border-radius:12px;padding:10px 12px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start;}
+.alerta-card.al{background:var(--alc);border:1px solid rgba(176,48,32,.2);}
+.alerta-card.am{background:var(--amc);border:1px solid rgba(200,124,42,.2);}
+.alerta-card.az{background:var(--azc);border:1px solid rgba(42,80,128,.2);}
+.alerta-ico{font-size:20px;flex-shrink:0;}
+.alerta-corpo{flex:1;}
+.alerta-titulo{font-size:12px;font-weight:600;color:var(--pr);margin-bottom:2px;}
+.alerta-msg{font-size:11px;color:var(--cz);line-height:1.4;}
+.alerta-ler{background:none;border:none;font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);cursor:pointer;padding:4px 0;text-decoration:underline;}
+/* FAB */
+.fab{position:fixed;bottom:80px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--v3);border:none;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;z-index:30;}
+/* Modais */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:flex-end;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-ov.vis{opacity:1;pointer-events:all;}
+.modal-box{background:var(--br);border-radius:20px 20px 0 0;width:100%;max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);scrollbar-width:none;}
+.modal-box::-webkit-scrollbar{display:none;}
+.modal-ov.vis .modal-box{transform:translateY(0);}
+.modal-handle{width:36px;height:4px;background:var(--czl);border-radius:2px;margin:14px auto 0;}
+.modal-acao-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:flex-end;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .2s;}
+.modal-acao-ov.vis{opacity:1;pointer-events:all;}
+.modal-acao-box{background:var(--br);border-radius:20px 20px 0 0;width:100%;padding:14px 16px 32px;transform:translateY(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);max-height:85vh;overflow-y:auto;scrollbar-width:none;}
+.modal-acao-box::-webkit-scrollbar{display:none;}
+.modal-acao-ov.vis .modal-acao-box{transform:translateY(0);}
+.modal-titulo{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--v2);margin-bottom:12px;}
+.campo{margin-bottom:9px;}
+.campo label{display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px;}
+.campo input,.campo select,.campo textarea{width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--pr);outline:none;}
+.campo input:focus{border-color:var(--v3);}
+.btn-salvar{width:100%;padding:12px;background:var(--v2);color:var(--vg);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;}
+/* Prioridade */
+.prio-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.prio-btn{padding:10px;border-radius:9px;border:1.5px solid var(--czl);background:var(--ar);cursor:pointer;text-align:center;}
+.prio-btn.sel.urgente{background:var(--alc);border-color:var(--al);}
+.prio-btn.sel.alta{background:var(--amc);border-color:var(--am);}
+.prio-btn.sel.normal{background:var(--vp);border-color:var(--v4);}
+.prio-btn.sel.baixa{background:var(--ar);border-color:var(--czl);}
+.nota-sel{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:10px;}
+.nota-btn{padding:9px;border-radius:7px;border:1.5px solid var(--czl);background:var(--ar);font-family:'Playfair Display',serif;font-size:18px;font-weight:700;cursor:pointer;text-align:center;}
+.nota-btn.sel-1,.nota-btn.sel-2{background:var(--alc);border-color:var(--al);color:var(--al);}
+.nota-btn.sel-3,.nota-btn.sel-4{background:var(--amc);border-color:var(--am);color:var(--am);}
+.nota-btn.sel-5,.nota-btn.sel-6{background:var(--vp);border-color:var(--v4);color:var(--v3);}
+/* Diário */
+.diario-entry{background:var(--br);border-radius:12px;border:1px solid var(--czl);padding:11px 13px;margin-bottom:7px;}
+.diario-hora{font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-bottom:3px;}
+.diario-texto{font-size:13px;color:var(--pr);line-height:1.5;}
+.diario-tag{display:inline-block;font-family:'DM Mono',monospace;font-size:8px;padding:2px 6px;border-radius:4px;margin-top:5px;}
+.diario-tag.custo{background:var(--alc);color:var(--al);}
+.diario-tag.obs{background:var(--ck);color:var(--cz);}
+.diario-tag.func{background:var(--amc);color:var(--am);}
+.diario-tag.estrutura{background:var(--azc);color:var(--az);}
+/* Risco cards (aba Agora) */
+.risco-card{border-radius:12px;border:1.5px solid;padding:11px 13px;margin-bottom:7px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;}
+.risco-card.urgente{background:var(--alc);border-color:rgba(176,48,32,.35);}
+.risco-card.atencao{background:var(--amc);border-color:rgba(200,124,42,.3);}
+.risco-card.info{background:var(--azc);border-color:rgba(42,80,128,.25);}
+.risco-ico{font-size:22px;flex-shrink:0;line-height:1;}
+.risco-corpo{flex:1;}
+.risco-titulo{font-size:13px;font-weight:600;color:var(--pr);margin-bottom:2px;}
+.risco-detalhe{font-size:11px;color:var(--cz);line-height:1.45;}
+.risco-acao{font-family:'DM Mono',monospace;font-size:9px;color:var(--v3);margin-top:5px;}
+.btn-nova-nota{width:100%;padding:12px;background:var(--v2);color:var(--vg);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="statusbar">
+    <div class="sb-hora" id="sbHora">--:--</div>
+    <!-- Badge clicável que abre aba de alertas -->
+    <button class="alerta-badge" id="alertaBadge" onclick="irParaAlertas()">
+      ⚠️ <span id="badgeNum">0</span>
+    </button>
+  </div>
+  <div class="tophead">
+    <div>
+      <h1>Gestão</h1>
+      <div class="tophead-sub" id="dataHoje">-- de --- de ----</div>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <div class="tabi on" id="tabiAgora"   onclick="mudarTab('agora',this)">
+      <span class="tabi-ico">🚨</span><span class="tabi-lbl">Agora</span>
+      <span class="tabi-badge" id="badgeAgora"></span>
+    </div>
+    <div class="tabi" id="tabiEquipe"  onclick="mudarTab('equipe',this)"><span class="tabi-ico">👥</span><span class="tabi-lbl">Equipe</span></div>
+    <div class="tabi" id="tabiDiario"  onclick="mudarTab('diario',this)"><span class="tabi-ico">📓</span><span class="tabi-lbl">Diário</span></div>
+    <div class="tabi" id="tabiTarefas" onclick="mudarTab('tarefas',this)"><span class="tabi-ico">✅</span><span class="tabi-lbl">Tarefas</span></div>
+    <div class="tabi" id="tabiVisitas" onclick="mudarTab('visitas',this)">
+      <span class="tabi-ico">📋</span><span class="tabi-lbl">Visitas</span>
+      <span class="tabi-badge" id="badgeVisitas">0</span>
+    </div>
+  </div>
+  <div class="content" id="conteudo">
+    <div style="text-align:center;padding:40px;color:var(--cz);font-family:'DM Mono',monospace;font-size:11px">Carregando...</div>
+  </div>
+  <div class="bottom-nav">
+    <a class="nav-i" href="app_ponto.html"><span class="nav-ico">📋</span><span class="nav-lbl">Ponto</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_mapa.html')"><span class="nav-ico">🗺️</span><span class="nav-lbl">Mapa</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_lotes.html')"><span class="nav-ico">🌱</span><span class="nav-lbl">Lotes</span></a>
+    <a class="nav-i on" href="app_gestor.html"><span class="nav-ico">🎯</span><span class="nav-lbl">Gestão</span></a>
+    <a class="nav-i" href="app_relatorio.html"><span class="nav-ico">📊</span><span class="nav-lbl">Relatório</span></a>
+  </div>
+</div>
+
+<button class="fab" id="fabAcao" onclick="abrirFab()" style="display:none">＋</button>
+
+<!-- MODAL FUNCIONÁRIO -->
+<div class="modal-ov" id="modalFunc" onclick="fecharMod('modalFunc',event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="modalFuncConteudo"></div>
+  </div>
+</div>
+
+<!-- MODAL AÇÃO (tarefa, criar func, avaliação) -->
+<div class="modal-acao-ov" id="modalAcao" onclick="fecharMod('modalAcao',event)">
+  <div class="modal-acao-box" onclick="event.stopPropagation()" id="modalAcaoBox"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const APP={usuario:null,tabAtual:'agora',equipe:[],visitas:[],tarefas:[],urgencias:{},replantios:{},diario:[],prioSel:'normal',notaSel:null,funcAtual:null};
+const nomesNivel={1:'Iniciante',2:'Operacional',3:'Técnico',4:'Gestor campo',5:'Gestor principal'};
+const ESTADO_LBL={muito_bem:'Muito bem 🌟',ok:'Ok ✓',atencao:'Atenção 👁️',problema:'Problema ⚠️'};
+
+(async function init(){
+  const u=localStorage.getItem('vf_usuario');
+  if(!u){window.location.href='app_login.html';return;}
+  APP.usuario=JSON.parse(u);
+  if(parseInt(APP.usuario.nivel)<4){window.location.href='app_ponto.html';return;}
+  atualizarHora(); setInterval(atualizarHora,30000);
+  document.getElementById('dataHoje').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('fabAcao').style.display='flex';
+  await Promise.all([carregarEquipe(),carregarUrgencias(),carregarTarefas(),carregarDiario()]);
+  renderAgora();
+})();
+
+function atualizarHora(){document.getElementById('sbHora').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+
+async function mudarTab(tab,el){
+  APP.tabAtual=tab;
+  document.querySelectorAll('.tabi').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('fabAcao').style.display=(tab==='tarefas'||tab==='diario'||tab==='equipe')?'flex':'none';
+  if(tab==='agora')   renderAgora();
+  if(tab==='equipe')  renderEquipe();
+  if(tab==='diario')  renderDiario();
+  if(tab==='tarefas') renderTarefas();
+  if(tab==='visitas') renderVisitas();
+}
+
+// ── ABA AGORA ─────────────────────────────────────────────────
+async function carregarUrgencias(){
+  try{
+    const r=await api('api_irrigacao.php',{acao:'carregar_zonas'});
+    if(!r.ok)return;
+    APP.urgencias  = r.dados.urgencias  ||{};
+    APP.replantios = r.dados.replantios ||{};
+  }catch(e){}
+}
+
+function renderAgora(){
+  if(APP.tabAtual!=='agora')return;
+  const cards=[];
+
+  const urgentes=Object.entries(APP.urgencias).filter(([,u])=>u.nivel==='urgente')
+    .sort(([,a],[,b])=>(b.horas_atras||0)-(a.horas_atras||0));
+  urgentes.forEach(([lid,u])=>{
+    cards.push(`<div class="risco-card urgente" onclick="irParaLote(${lid})">
+      <div class="risco-ico">🔥🔥</div>
+      <div class="risco-corpo">
+        <div class="risco-titulo">Lote #${lid}${u.nome_popular?' — '+u.nome_popular:''}</div>
+        <div class="risco-detalhe">${u.horas_atras!=null?u.horas_atras+'h sem molhar':'Nunca regado'} · ${u.na_zona?'Zona irrigação':'Rega manual'}</div>
+        <div class="risco-acao">→ Toque para ver o lote</div>
+      </div>
+    </div>`);
+  });
+
+  const atencao=Object.entries(APP.urgencias).filter(([,u])=>u.nivel==='atencao')
+    .sort(([,a],[,b])=>(b.horas_atras||0)-(a.horas_atras||0));
+  atencao.slice(0,4).forEach(([lid,u])=>{
+    cards.push(`<div class="risco-card atencao" onclick="irParaLote(${lid})">
+      <div class="risco-ico">🔥</div>
+      <div class="risco-corpo">
+        <div class="risco-titulo">Lote #${lid}${u.nome_popular?' — '+u.nome_popular:''}</div>
+        <div class="risco-detalhe">${u.horas_atras!=null?u.horas_atras+'h sem molhar':'Sem registro'} — verificar hoje</div>
+        <div class="risco-acao">→ Toque para ver o lote</div>
+      </div>
+    </div>`);
+  });
+
+  const decisivos=Object.entries(APP.replantios).filter(([,r])=>r.fase==='decisivo');
+  decisivos.forEach(([lid,r])=>{
+    cards.push(`<div class="risco-card urgente" onclick="irParaLote(${lid})">
+      <div class="risco-ico">🌱🌱</div>
+      <div class="risco-corpo">
+        <div class="risco-titulo">Lote #${lid}${r.nome_popular?' — '+r.nome_popular:''}</div>
+        <div class="risco-detalhe">Replantado há ${r.dias} dia(s) — período decisivo. Molhar 2× ao dia.</div>
+        <div class="risco-acao">→ Ver lote e registrar visita</div>
+      </div>
+    </div>`);
+  });
+
+  const criticos=Object.entries(APP.replantios).filter(([,r])=>r.fase==='critico'||r.fase==='acompanhar');
+  criticos.slice(0,3).forEach(([lid,r])=>{
+    cards.push(`<div class="risco-card info" onclick="irParaLote(${lid})">
+      <div class="risco-ico">🌱</div>
+      <div class="risco-corpo">
+        <div class="risco-titulo">Lote #${lid}${r.nome_popular?' — '+r.nome_popular:''}</div>
+        <div class="risco-detalhe">Replantado há ${r.dias} dia(s) — acompanhar diariamente</div>
+        <div class="risco-acao">→ Registrar visita</div>
+      </div>
+    </div>`);
+  });
+
+  const semPonto=APP.equipe.filter(f=>!f.entrada);
+  if(semPonto.length){
+    cards.push(`<div class="risco-card atencao">
+      <div class="risco-ico">👤</div>
+      <div class="risco-corpo">
+        <div class="risco-titulo">Sem ponto hoje</div>
+        <div class="risco-detalhe">${semPonto.map(f=>f.apelido||f.nome).join(', ')}</div>
+      </div>
+    </div>`);
+  }
+
+  APP.tarefas.filter(t=>t.prioridade==='urgente').forEach(t=>{
+    cards.push(`<div class="risco-card urgente">
+      <div class="risco-ico">📋</div>
+      <div class="risco-corpo">
+        <div class="risco-titulo">Tarefa urgente</div>
+        <div class="risco-detalhe">${t.titulo} — ${t.atribuido_nome||'Todos'}</div>
+      </div>
+    </div>`);
+  });
+
+  const total=urgentes.length+decisivos.length+APP.tarefas.filter(t=>t.prioridade==='urgente').length+semPonto.length;
+  const badge=document.getElementById('badgeAgora');
+  if(total>0){badge.textContent=total;badge.classList.add('vis');}else badge.classList.remove('vis');
+
+  if(!cards.length){
+    document.getElementById('conteudo').innerHTML=`
+      <div style="text-align:center;padding:44px 20px">
+        <div style="font-size:48px;margin-bottom:12px">✅</div>
+        <div style="font-size:15px;font-weight:600;color:var(--v3);margin-bottom:6px">Tudo em ordem</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--cz)">Nenhum risco identificado agora</div>
+      </div>`;
+    return;
+  }
+  document.getElementById('conteudo').innerHTML=cards.join('');
+}
+
+function irParaLote(id){window.location.href=`app_lotes.html?lote_id=${id}`;}
+
+// ── ABA EQUIPE ────────────────────────────────────────────────
+async function carregarEquipe(){
+  try{
+    const r=await api('api_prioridades.php',{acao:'painel_equipe'});
+    if(!r.ok)return;
+    APP.equipe  = r.dados.funcionarios      ||[];
+    APP.visitas = r.dados.visitas_pendentes ||[];
+    const nv=APP.visitas.length;
+    const bv=document.getElementById('badgeVisitas');
+    bv.textContent=nv; bv.classList.toggle('vis',nv>0);
+  }catch(e){}
+}
+
+function renderEquipe(){
+  if(APP.tabAtual!=='equipe')return;
+  if(!APP.equipe.length){document.getElementById('conteudo').innerHTML='<div style="text-align:center;padding:40px;color:var(--cz);font-family:\'DM Mono\',monospace;font-size:11px">Nenhum funcionário.</div>';return;}
+  const html=APP.equipe.map(f=>{
+    const ponto=f.entrada
+      ?(f.saida?`<span class="fchip ok">✓ ${f.entrada.slice(11,16)}→${f.saida.slice(11,16)}</span>`
+               :`<span class="fchip ok">✓ ${f.entrada.slice(11,16)} — presente</span>`)
+      :'<span class="fchip absent">Sem ponto hoje</span>';
+    let saqChip='';
+    if(f.saquinhos_qtd>0){
+      const taxa=(f.saquinhos_min/f.saquinhos_qtd).toFixed(2);
+      const cor=parseFloat(taxa)<=2?'ok':parseFloat(taxa)<=3?'am':'al';
+      saqChip=`<span class="fchip ${cor}">🪣 ${f.saquinhos_qtd}un · ${taxa} min/un</span>`;
+    }
+    const irrigChip=f.irrigacao_min>0
+      ?`<span class="fchip ${f.irrigacao_min>=15?'ok':'am'}">💧 ${f.irrigacao_min}min irrig.</span>`:'';
+    const visChip=f.visitas_hoje>0?`<span class="fchip az">👁️ ${f.visitas_hoje} visita(s)</span>`:'';
+    return `<div class="func-card" onclick="abrirFuncionario(${f.id})">
+      <div class="func-top">
+        <div class="func-avatar">${f.avatar_emoji||'🌱'}</div>
+        <div class="func-info"><div class="func-nome">${f.apelido||f.nome}</div><div class="func-nivel">Nível ${f.nivel} · ${nomesNivel[f.nivel]||''}</div></div>
+        <div class="func-direita"><div class="func-score">${f.score_total||0}</div><div class="func-score-sub">pts hoje</div></div>
+      </div>
+      <div class="func-chips">${ponto}${f.ponto_manual?'<span class="fchip am">Manual</span>':''}${saqChip}${irrigChip}${visChip}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('conteudo').innerHTML=`<div class="sec-titulo">Equipe hoje</div>${html}`;
+}
+
+// ── ABA DIÁRIO ────────────────────────────────────────────────
+async function carregarDiario(){
+  try{
+    const r=await api('api_prioridades.php',{acao:'diario_hoje'});
+    if(r.ok) APP.diario=r.dados.entradas||[];
+  }catch(e){ APP.diario=[]; }
+}
+
+function renderDiario(){
+  if(APP.tabAtual!=='diario')return;
+  const TAGS={custo:'💰 Custo',obs:'📝 Obs.',func:'👤 Funcionário',estrutura:'🔧 Estrutura',auto:'🤖 Auto'};
+  const html=APP.diario.map(e=>`
+    <div class="diario-entry">
+      <div class="diario-hora">${(e.hora||'').slice(0,5)} ${e.autor_nome?'· '+e.autor_nome:''}</div>
+      <div class="diario-texto">${e.texto}</div>
+      ${e.categoria?`<span class="diario-tag ${e.categoria}">${TAGS[e.categoria]||e.categoria}</span>`:''}
+      ${e.valor?`<span class="diario-tag custo"> R$${parseFloat(e.valor).toFixed(2)}</span>`:''}
+    </div>`).join('');
+  document.getElementById('conteudo').innerHTML=`
+    <button class="btn-nova-nota" onclick="abrirNovaNota()">＋ Nova anotação</button>
+    <div class="sec-titulo">Registros de hoje</div>
+    ${APP.diario.length?html:'<div style="text-align:center;padding:20px;color:var(--cz);font-family:\'DM Mono\',monospace;font-size:11px">Nenhum registro hoje ainda.</div>'}`;
+}
+
+function abrirNovaNota(){
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="modal-titulo">Nova anotação</div>
+    <div class="campo"><label>Categoria</label>
+      <select id="notaCat" onchange="document.getElementById('campoValor').style.display=this.value==='custo'?'':'none'">
+        <option value="obs">📝 Observação geral</option>
+        <option value="func">👤 Sobre funcionário</option>
+        <option value="estrutura">🔧 Estrutura / manutenção</option>
+        <option value="custo">💰 Custo / gasto</option>
+      </select>
+    </div>
+    <div class="campo"><label>Anotação *</label>
+      <textarea id="notaTexto" style="height:80px;resize:none;width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:8px 10px;font-size:13px" placeholder="ex: Funcionário chegou atrasado. / Consertei o sombrite — R$200."></textarea>
+    </div>
+    <div class="campo" id="campoValor" style="display:none">
+      <label>Valor (R$)</label>
+      <input type="number" id="notaValor" inputmode="decimal" placeholder="ex: 150.00">
+    </div>
+    <button class="btn-salvar" onclick="salvarNota()">Salvar anotação</button>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+async function salvarNota(){
+  const texto=document.getElementById('notaTexto')?.value?.trim();
+  const cat  =document.getElementById('notaCat')?.value;
+  const valor=document.getElementById('notaValor')?.value||null;
+  if(!texto){toast('Escreva a anotação');return;}
+  try{
+    const r=await api('api_prioridades.php',{acao:'adicionar_anotacao',texto,tipo:cat,valor,sobre_usuario:null});
+    if(!r.ok)throw new Error(r.erro);
+    toast('✓ Anotação salva');
+    fecharMod('modalAcao',{target:document.getElementById('modalAcao')});
+    await carregarDiario(); renderDiario();
+  }catch(e){toast(e.message);}
+}
+
+// ── ABA TAREFAS ───────────────────────────────────────────────
+async function carregarTarefas(){
+  try{const r=await api('api_prioridades.php',{acao:'listar_tarefas',status:'pendente'});if(!r.ok)return;APP.tarefas=r.dados.tarefas||[];}catch(e){}
+}
+
+function renderTarefas(){
+  if(APP.tabAtual!=='tarefas')return;
+  if(!APP.tarefas.length){document.getElementById('conteudo').innerHTML='<div style="text-align:center;padding:40px;color:var(--cz);font-family:\'DM Mono\',monospace;font-size:11px">✓ Sem tarefas pendentes.</div>';return;}
+  const prioLbl={urgente:'🚨 Urgente',alta:'⚡ Alta',normal:'📋 Normal',baixa:'💤 Baixa'};
+  const pTag={urgente:'al',alta:'am',normal:'verde',baixa:'ck'};
+  const html=APP.tarefas.map(t=>`
+    <div class="tarefa-card">
+      <div class="tarefa-barra ${t.prioridade}"></div>
+      <div class="tarefa-body">
+        <div class="tarefa-titulo">${t.titulo}</div>
+        <div class="tarefa-tags">
+          <span class="ttag ${pTag[t.prioridade]||'ck'}">${prioLbl[t.prioridade]||t.prioridade}</span>
+          <span class="ttag ck">👤 ${t.atribuido_nome||'Todos'}</span>
+          ${t.data_limite?`<span class="ttag ck">📅 ${new Date(t.data_limite).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>`:''}
+        </div>
+      </div>
+      <div class="tarefa-acoes">
+        <button class="tarefa-btn p" onclick="concluirTarefa(${t.id})">✓ Concluída</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('conteudo').innerHTML=`<div class="sec-titulo">${APP.tarefas.length} tarefa(s) pendente(s)</div>${html}`;
+}
+
+async function concluirTarefa(id){
+  try{const r=await api('api_prioridades.php',{acao:'concluir_tarefa',id});if(!r.ok)throw new Error(r.erro);toast('✓ Tarefa concluída');await carregarTarefas();renderTarefas();}catch(e){toast(e.message);}
+}
+
+// ── ABA VISITAS ───────────────────────────────────────────────
+function renderVisitas(){
+  if(APP.tabAtual!=='visitas')return;
+  if(!APP.visitas.length){document.getElementById('conteudo').innerHTML='<div style="text-align:center;padding:40px;color:var(--cz);font-family:\'DM Mono\',monospace;font-size:11px">✓ Todas as visitas foram checadas.</div>';return;}
+  const html=APP.visitas.map(v=>{
+    const hora=new Date(v.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const data=new Date(v.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+    const local=v.especie_nome?`${v.especie_nome}${v.corredor?' · Corredor '+v.corredor:''}`:`${v.lote_nome||'Lote'}${v.corredor?' · Corredor '+v.corredor:''}`;
+    return `<div class="visita-check-card">
+      <div class="vc-head">
+        <div class="vc-dot ${v.estado_geral}"></div>
+        <div class="vc-info"><div class="vc-lote">${local}</div><div class="vc-meta">${v.avatar_emoji||'🌱'} ${v.registrado_por_nome} · ${data} ${hora}</div></div>
+        <div class="vc-estado ${v.estado_geral}">${ESTADO_LBL[v.estado_geral]||''}</div>
+      </div>
+      ${v.observacao?`<div class="vc-obs">${v.observacao}</div>`:''}
+      ${v.sugere_atencao?`<div style="background:var(--amc);border-radius:6px;padding:4px 10px;font-size:10px;color:var(--am);margin:0 13px 6px">👁️ Funcionário sugeriu atenção</div>`:''}
+      <div class="vc-acoes">
+        <button class="vc-btn ok" onclick="checarVisita(${v.id},false)">✓ Checado</button>
+        <button class="vc-btn ver" onclick="irParaLote(${v.lote_id})">Ver lote</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('conteudo').innerHTML=`<div class="sec-titulo">${APP.visitas.length} visita(s) a checar</div>${html}`;
+}
+
+async function checarVisita(visitaId,encerrar){
+  try{const r=await api('api_prioridades.php',{acao:'checar_visita',visita_id:visitaId,encerrar_atencao:encerrar?1:0});if(!r.ok)throw new Error(r.erro);toast('✓ Visita checada');await carregarEquipe();renderVisitas();}catch(e){toast(e.message);}
+}
+
+// ── FAB ───────────────────────────────────────────────────────
+function abrirFab(){
+  if(APP.tabAtual==='tarefas') abrirCriarTarefa();
+  else if(APP.tabAtual==='diario') abrirNovaNota();
+  else abrirCriarFuncionario();
+}
+
+// ── CRIAR TAREFA ──────────────────────────────────────────────
+function abrirCriarTarefa(){
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="modal-titulo">Nova tarefa</div>
+    <div class="prio-grid">
+      <div class="prio-btn urgente" onclick="selPrio('urgente',this)"><span style="font-size:18px">🚨</span><div style="font-size:11px;font-weight:500">Urgente</div></div>
+      <div class="prio-btn alta"    onclick="selPrio('alta',this)"><span style="font-size:18px">⚡</span><div style="font-size:11px;font-weight:500">Alta</div></div>
+      <div class="prio-btn sel normal" onclick="selPrio('normal',this)"><span style="font-size:18px">📋</span><div style="font-size:11px;font-weight:500">Normal</div></div>
+      <div class="prio-btn baixa"   onclick="selPrio('baixa',this)"><span style="font-size:18px">💤</span><div style="font-size:11px;font-weight:500">Baixa</div></div>
+    </div>
+    <div class="campo"><label>Título *</label><input type="text" id="novaTitulo" placeholder="ex: Irrigar corredor 2 manualmente"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="campo"><label>Data limite</label><input type="date" id="novaData" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="campo"><label>Hora</label><input type="time" id="novaHora"></div>
+    </div>
+    <div class="campo"><label>Atribuir a</label><select id="novaAtrib"><option value="">Todos</option>${APP.equipe.map(f=>`<option value="${f.id}">${f.apelido||f.nome}</option>`).join('')}</select></div>
+    <button class="btn-salvar" onclick="salvarTarefa()">Criar tarefa</button>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+function selPrio(p,el){APP.prioSel=p;document.querySelectorAll('.prio-btn').forEach(b=>b.classList.remove('sel'));el.classList.add('sel');}
+
+async function salvarTarefa(){
+  const titulo=document.getElementById('novaTitulo')?.value?.trim();
+  if(!titulo){toast('Título é obrigatório');return;}
+  try{
+    const r=await api('api_prioridades.php',{acao:'criar_tarefa',titulo,prioridade:APP.prioSel,atribuido_a:document.getElementById('novaAtrib')?.value||null,data_limite:document.getElementById('novaData')?.value||null,hora_limite:document.getElementById('novaHora')?.value||null});
+    if(!r.ok)throw new Error(r.erro);
+    toast('✓ Tarefa criada');fecharMod('modalAcao',{target:document.getElementById('modalAcao')});
+    await carregarTarefas();if(APP.tabAtual==='tarefas')renderTarefas();
+  }catch(e){toast(e.message);}
+}
+
+// ── CRIAR FUNCIONÁRIO ─────────────────────────────────────────
+function abrirCriarFuncionario(){
+  const emojis=['🌱','🌿','🌳','🌾','🍃','🪴','🌻','🦋'];
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="modal-titulo">Novo funcionário</div>
+    <div class="campo"><label>Nome completo *</label><input type="text" id="fnNome" placeholder="ex: João Silva"></div>
+    <div class="campo"><label>Apelido</label><input type="text" id="fnApelido" placeholder="ex: João"></div>
+    <div class="campo"><label>Nível de acesso *</label>
+      <select id="fnNivel">
+        <option value="1">Nível 1 — Irrigação, ronda</option>
+        <option value="2">Nível 2 — Operacional</option>
+        <option value="3" selected>Nível 3 — Técnico</option>
+        <option value="4">Nível 4 — Gestor campo</option>
+      </select>
+    </div>
+    <div class="campo"><label>PIN inicial (6 dígitos) *</label><input type="number" id="fnPin" inputmode="numeric" maxlength="6" placeholder="ex: 123456" min="100000" max="999999"></div>
+    <div class="campo"><label>Emoji avatar</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px" id="emojiGrid">
+        ${emojis.map((e,i)=>`<div style="font-size:24px;cursor:pointer;padding:5px;border-radius:7px;border:2px solid ${i===0?'var(--v4)':'var(--czl)'}" onclick="selEmoji('${e}',this)">${e}</div>`).join('')}
+      </div>
+      <input type="hidden" id="fnEmoji" value="${emojis[0]}">
+    </div>
+    <button class="btn-salvar" onclick="criarFuncionario()">Criar funcionário</button>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+function selEmoji(emoji,el){document.getElementById('fnEmoji').value=emoji;document.querySelectorAll('#emojiGrid div').forEach(d=>d.style.border='2px solid var(--czl)');el.style.border='2px solid var(--v4)';}
+
+async function criarFuncionario(){
+  const nome=document.getElementById('fnNome')?.value?.trim();
+  const apelido=document.getElementById('fnApelido')?.value?.trim()||nome;
+  const nivel=parseInt(document.getElementById('fnNivel')?.value);
+  const pin=document.getElementById('fnPin')?.value?.trim();
+  const emoji=document.getElementById('fnEmoji')?.value;
+  if(!nome){toast('Nome é obrigatório');return;}
+  if(!pin||pin.length!==6){toast('PIN deve ter 6 dígitos');return;}
+  try{
+    const r=await api('api_usuarios.php',{acao:'criar',nome,apelido,nivel,pin,avatar_emoji:emoji});
+    if(!r.ok)throw new Error(r.erro);
+    toast(`✓ ${apelido} criado! PIN: ${pin}`);
+    fecharMod('modalAcao',{target:document.getElementById('modalAcao')});
+    await carregarEquipe();
+  }catch(e){toast(e.message);}
+}
+
+// ── MODAL FUNCIONÁRIO ─────────────────────────────────────────
+async function abrirFuncionario(uid){
+  document.getElementById('modalFunc').classList.add('vis');
+  document.getElementById('modalFuncConteudo').innerHTML='<div style="padding:40px;text-align:center;color:var(--cz)">Carregando...</div>';
+  const f=APP.equipe.find(x=>x.id===uid);if(!f)return;
+  APP.funcAtual=f;
+  document.getElementById('modalFuncConteudo').innerHTML=`
+    <div style="padding:14px 18px 0">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-size:36px">${f.avatar_emoji||'🌱'}</div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2)">${f.apelido||f.nome}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz)">Nível ${f.nivel} · ${nomesNivel[f.nivel]||''}</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--v3)">${f.score_total||0}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--cz)">pts hoje</div>
+        </div>
+      </div>
+      ${f.saquinhos_qtd>0?`<div style="background:var(--ar);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:5px">Saquinhos hoje</div>
+        <div style="font-size:20px;font-weight:700;color:var(--pr)">${f.saquinhos_qtd}<span style="font-size:13px;font-weight:400;color:var(--cz)"> un</span></div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:${(f.saquinhos_min/f.saquinhos_qtd)<=2?'var(--v3)':'var(--am)'};margin-top:3px">
+          ${(f.saquinhos_min/f.saquinhos_qtd).toFixed(2)} min/saquinho · meta: 2.00
+        </div>
+      </div>`:''}
+      <div style="margin-bottom:12px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:6px">Avaliar atividade</div>
+        <div class="nota-sel">${[1,2,3,4,5,6].map(n=>`<div class="nota-btn" onclick="selNota(${n},this)">${n}</div>`).join('')}</div>
+        <div class="campo"><label>Observação</label><input type="text" id="avalObs" placeholder="Contexto da avaliação"></div>
+        <button class="btn-salvar" onclick="salvarAvaliacao(${f.id})">Salvar avaliação do funcionário</button>
+      </div>
+    </div>`;
+}
+
+let notaSel=null;
+function selNota(n,el){notaSel=n;document.querySelectorAll('.nota-btn').forEach(b=>{b.className='nota-btn';if(parseInt(b.textContent)===n)b.classList.add(`sel-${n}`);});}
+async function salvarAvaliacao(uid){
+  if(!notaSel){toast('Selecione uma nota');return;}
+  const obs=document.getElementById('avalObs')?.value?.trim();
+  try{const r=await api('api_prioridades.php',{acao:'salvar_avaliacao',usuario_id:uid,nota:notaSel,obs,periodo_inicio:new Date().toISOString().slice(0,10)});if(!r.ok)throw new Error(r.erro);notaSel=null;toast('✓ Avaliação salva');}catch(e){toast(e.message);}
+}
+
+// ── NAVEGAR ───────────────────────────────────────────────────
+async function navegar(destino){
+  try{
+    const r=await api('api_ponto.php',{acao:'hoje'});
+    if(r.ok&&r.dados.tem_entrada_aberta) window.location.href=destino;
+    else toast('🔒 Registre o ponto primeiro');
+  }catch(e){ toast('🔒 Registre o ponto primeiro'); }
+}
+
+function fecharMod(id,e){if(e.target===document.getElementById(id))document.getElementById(id).classList.remove('vis');}
+
+async function api(arq,dados){
+  const token=localStorage.getItem('vf_token');
+  const r=await fetch(`../api/${arq}`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},body:JSON.stringify(dados)});
+  if(r.status===401){window.location.href='app_login.html';}
+  return r.json();
+}
+let _tt;function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('vis');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('vis'),2800);}
+</script>
+</body>
+</html>

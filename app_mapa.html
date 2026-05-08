@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<!--
+  app_mapa.html  (v4)
+  Grade invisível por corredor: 6 abas × 4 colunas × 15 linhas
+  Altura dos lotes proporcional (vertical):
+    <30    → 0.5 célula (xs)
+    30-60  → 1 célula   (sm)
+    61-90  → 1.5 célula (md)
+    91-120 → 2 células  (lg)
+    bandeja → sempre 0.5 célula, largura fixa
+  Até 2 lotes por célula lado a lado (com folga)
+  Lotes vazios em cinza · Card: só nome popular + qtd + ícone
+  Versão: 4.0 · Mai/2026
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3d2b">
+<title>Florescer · Mapa</title>
+<link rel="manifest" href="../manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v2:#1a3d2b;--v3:#2d6b45;--v4:#4caf70;--v5:#86d4a0;
+  --vg:#c8ecd4;--vp:#e8f5ec;--am:#c87c2a;--amc:#fef3e6;
+  --al:#b03020;--alc:#fdecea;--az:#2a5080;--azc:#e8f0fa;
+  --br:#fdfcf8;--ar:#f4f0e8;--czl:#c8d8cc;--cz:#5a6860;--pr:#1a1f1c;
+
+  /* Célula base: altura */
+  --cel: 72px;
+  /* Largura da coluna dentro do corredor */
+  --col-w: 88px;
+  /* Folga entre lotes na mesma célula */
+  --gap: 5px;
+  /* Mapa fundo */
+  --mapa:#1a2a1e;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--mapa);color:#fff;overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;}
+
+/* ── STATUS BAR ── */
+.statusbar{background:var(--v2);padding:12px 16px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sb-left{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.sb-avatar{width:26px;height:26px;border-radius:50%;background:rgba(76,175,112,.3);display:flex;align-items:center;justify-content:center;font-size:13px;}
+.sb-user{font-family:'DM Mono',monospace;font-size:11px;color:var(--vg);}
+.sb-nivel{font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);}
+.sb-hora{font-family:'DM Mono',monospace;font-size:12px;color:rgba(200,236,212,.5);}
+
+/* ── TOOLBAR ── */
+.toolbar{background:rgba(0,0,0,.35);padding:6px 10px;display:flex;gap:5px;align-items:center;border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.toolbar::-webkit-scrollbar{display:none;}
+.tbtn{padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(200,236,212,.5);font-size:10px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;}
+.tbtn.on{background:rgba(76,175,112,.2);border-color:rgba(76,175,112,.4);color:var(--vg);}
+.tbtn.n4{border-color:rgba(200,124,42,.35);color:rgba(200,124,42,.6);}
+.tbtn.n4.on{background:rgba(200,124,42,.25);color:#ffd09a;}
+.tbtn-sep{width:1px;height:18px;background:rgba(255,255,255,.1);flex-shrink:0;}
+
+/* ── SUGESTÃO ── */
+.sugestao-bar{flex-shrink:0;}
+.sugestao{padding:6px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);}
+.sugestao.am{background:rgba(61,42,10,.85);color:#ffd09a;}
+.sugestao.al{background:rgba(61,15,10,.85);color:#ffb0a0;}
+.sug-ico{font-size:14px;}
+.sug-txt strong{display:block;font-size:11px;}
+.sug-txt span{font-size:10px;opacity:.75;}
+
+/* ── ABAS DE CORREDOR ── */
+.corredor-tabs{background:rgba(0,0,0,.3);display:flex;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.corredor-tabs::-webkit-scrollbar{display:none;}
+.ctab{flex-shrink:0;padding:7px 14px;font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,236,212,.35);cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.05em;position:relative;transition:all .15s;}
+.ctab.on{color:var(--v4);border-bottom-color:var(--v4);}
+.ctab-badge{position:absolute;top:4px;right:4px;background:var(--al);width:6px;height:6px;border-radius:50%;}
+
+/* ── ÁREA DO MAPA ── */
+.mapa{flex:1;overflow:auto;padding:10px 8px 80px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;}
+
+/* Painel de corredor (1 por aba) */
+.corredor-panel{display:none;}
+.corredor-panel.vis{display:block;}
+
+/* Grade: 4 colunas, n linhas */
+.grade{
+  display:grid;
+  grid-template-columns:repeat(4, var(--col-w));
+  gap:6px;
+  width:calc(4 * var(--col-w) + 3 * 6px);
+  margin:0 auto;
+  position:relative;
+}
+
+/* Célula da grade: container vertical */
+.celula{
+  width:var(--col-w);
+  min-height:var(--cel);
+  display:flex;
+  flex-direction:column;
+  gap:var(--gap);
+  padding:3px;
+  border-radius:6px;
+  /* grade invisível — só um hint suave */
+  background:rgba(255,255,255,.018);
+  border:1px solid rgba(255,255,255,.04);
+  position:relative;
+}
+
+/* Linha separadora a cada 5 linhas (visual suave) */
+.linha-sep{
+  grid-column:1/-1;
+  height:1px;
+  background:rgba(255,255,255,.04);
+  margin:0;
+}
+
+/* ── LOTES ── */
+.lote{
+  width:100%;
+  border-radius:6px;
+  padding:5px 6px 4px;
+  cursor:pointer;
+  position:relative;
+  border:1.5px solid rgba(255,255,255,.12);
+  transition:transform .12s, box-shadow .12s;
+  overflow:hidden;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.lote:active{transform:scale(.95);}
+
+/* Alturas proporcionais (vertical) */
+.lote.xs { height:calc(var(--cel) * 0.45); }
+.lote.sm { height:calc(var(--cel) * 1.0);  }
+.lote.md { height:calc(var(--cel) * 1.5);  }
+.lote.lg { height:calc(var(--cel) * 2.0);  }
+/* Bandeja: sempre xs, largura total da célula */
+.lote.bandeja{ height:calc(var(--cel) * 0.45); }
+
+/* Cores por status */
+.lote.st-vazio    {background:rgba(170,170,170,.13);border-color:rgba(190,190,190,.25);}
+.lote.st-ativo    {background:rgba(76,175,112,.18); border-color:rgba(76,175,112,.45);}
+.lote.st-urgente  {background:rgba(176,48,32,.22);  border-color:rgba(176,48,32,.65);animation:pul 1.6s infinite;}
+.lote.st-agua     {background:rgba(42,80,128,.22);  border-color:rgba(42,80,128,.55);}
+.lote.st-pronto   {background:rgba(200,124,42,.22); border-color:rgba(200,124,42,.55);}
+.lote.st-rust     {background:rgba(200,160,48,.22); border-color:rgba(200,160,48,.55);}
+.lote.st-sement   {background:rgba(42,74,107,.28);  border-color:rgba(42,74,107,.55);}
+
+/* Cores por FASE (sobrepõem o status quando aplicadas) */
+.lote.fase-semeadura    {background:rgba(80,200,100,.22); border-color:rgba(80,200,100,.55);}
+.lote.fase-germinacao   {background:rgba(210,170,20,.22); border-color:rgba(210,170,20,.55);}
+.lote.fase-recuperacao  {background:rgba(140,80,200,.22); border-color:rgba(140,80,200,.55);}
+
+/* Textura tubete — grade */
+.lote.tubete-tex{
+  background-image: repeating-linear-gradient(
+    0deg, transparent, transparent 6px,
+    rgba(255,255,255,.04) 6px, rgba(255,255,255,.04) 7px
+  ), repeating-linear-gradient(
+    90deg, transparent, transparent 6px,
+    rgba(255,255,255,.04) 6px, rgba(255,255,255,.04) 7px
+  );
+}
+/* Textura sementeira — diagonal */
+.lote.sementeira-tex{
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,.04) 0px, rgba(255,255,255,.04) 2px,
+    transparent 2px, transparent 8px
+  );
+  border-style: dashed;
+}
+
+@keyframes pul{0%,100%{border-color:rgba(176,48,32,.65);}50%{border-color:rgba(200,60,40,1);box-shadow:0 0 10px rgba(200,60,40,.35);}}
+
+/* Card simplificado: só nome + qtd */
+.lote-nome{font-size:9px;font-weight:600;color:rgba(255,255,255,.82);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lote-qtd {font-family:'DM Mono',monospace;font-size:8px;color:rgba(255,255,255,.38);line-height:1;}
+/* Ícone de atenção (canto inferior esquerdo) */
+.lote-atencao{position:absolute;bottom:2px;left:3px;font-size:8px;line-height:1;}
+/* Tag urgente/pronto */
+.lote-tag{position:absolute;top:-1px;right:-1px;font-size:6px;font-weight:700;padding:1px 4px;border-radius:0 5px 0 3px;}
+.lote-tag.al{background:var(--al);color:#fff;}
+.lote-tag.am{background:var(--am);color:#fff;}
+.lote-tag.vaz{background:rgba(180,180,180,.35);color:rgba(255,255,255,.6);}
+
+/* Slot vazio clicável */
+.slot-vazio{
+  display:flex;align-items:center;justify-content:center;
+  border-radius:5px;border:1.5px dashed rgba(255,255,255,.06);
+  height:calc(var(--cel)*0.45);
+  cursor:default;
+  flex-shrink:0;
+}
+.slot-vazio.mover-alvo{border-color:rgba(76,175,112,.4);cursor:pointer;background:rgba(76,175,112,.06);}
+.slot-vazio .sv-plus{font-size:13px;color:rgba(255,255,255,.1);}
+.slot-vazio.mover-alvo .sv-plus{color:rgba(76,175,112,.4);}
+
+/* Célula selecionada para irrigação */
+.celula.sel-irrig{background:rgba(42,80,180,.25)!important;border-color:rgba(100,160,255,.5)!important;}
+/* Célula selecionada para sol */
+.celula.sel-sol{background:rgba(200,160,20,.2)!important;border-color:rgba(255,200,50,.5)!important;}
+/* Lote selecionado para rega manual */
+.lote.lote-regar-sel{border-color:rgba(42,80,180,.9)!important;background:rgba(42,80,180,.3)!important;}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{background:var(--br);border-top:1px solid var(--czl);display:flex;padding:6px 0 20px;flex-shrink:0;}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;text-decoration:none;cursor:pointer;}
+.nav-ico{font-size:20px;line-height:1;}
+.nav-lbl{font-size:9px;color:var(--cz);font-family:'DM Mono',monospace;}
+.nav-i.on .nav-lbl{color:var(--v3);}
+
+/* ── MODAL MINI-FICHA ── */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-end;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-ov.vis{opacity:1;pointer-events:all;}
+.modal-box{background:var(--br);border-radius:20px 20px 0 0;width:100%;max-height:78vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);scrollbar-width:none;}
+.modal-box::-webkit-scrollbar{display:none;}
+.modal-ov.vis .modal-box{transform:translateY(0);}
+.modal-handle{width:36px;height:4px;background:var(--czl);border-radius:2px;margin:14px auto 0;}
+.mf-wrap{padding:10px 16px 28px;}
+.mf-pill{display:inline-block;font-family:'DM Mono',monospace;font-size:8px;padding:3px 10px;border-radius:20px;margin-bottom:6px;}
+.mf-titulo{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2);line-height:1.1;}
+.mf-sub{font-size:11px;color:var(--cz);margin-top:3px;line-height:1.4;}
+.mf-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 0;}
+.mf-item{background:var(--ar);border-radius:8px;padding:7px 9px;}
+.mf-lbl{font-family:'DM Mono',monospace;font-size:7px;text-transform:uppercase;letter-spacing:.08em;color:var(--cz);margin-bottom:2px;}
+.mf-val{font-size:12px;font-weight:600;color:var(--v2);}
+.mf-alertas{margin-top:8px;}
+.mf-alerta{padding:6px 10px;border-radius:7px;font-size:11px;display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.mf-alerta.al{background:var(--alc);color:var(--al);}
+.mf-alerta.am{background:var(--amc);color:var(--am);}
+.mf-alerta.az{background:var(--azc);color:var(--az);}
+.mf-acoes{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.mf-btn{padding:11px 14px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:10px;}
+.mf-btn.p{background:var(--v2);color:white;}
+.mf-btn.s{background:var(--vp);color:var(--v3);}
+.mf-btn.a{background:var(--amc);color:var(--am);}
+.mf-btn .mi{font-size:16px;}
+
+/* ── PAINEL ZONA (gestor) ── */
+.zona-panel{position:fixed;bottom:80px;left:10px;right:10px;background:var(--br);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.3);padding:12px 14px;z-index:40;display:none;}
+.zona-panel.vis{display:block;}
+.zp-titulo{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:7px;}
+.zp-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.campo label{display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:3px;}
+.campo input,.campo select{width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:7px;padding:7px 10px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--pr);outline:none;}
+.zp-btns{display:flex;gap:6px;}
+.zp-btn{flex:1;padding:9px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+.zp-btn.ok{background:var(--v2);color:white;}
+.zp-btn.cancel{background:var(--ar);color:var(--cz);border:1px solid var(--czl);}
+
+/* Popup notificação */
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--v2);border:1px solid rgba(76,175,112,.2);border-radius:24px;padding:8px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--vg);z-index:200;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:92vw;}
+.toast.vis{transform:translateX(-50%) translateY(0);}
+.loading{display:flex;align-items:center;justify-content:center;height:100%;font-family:'DM Mono',monospace;font-size:11px;color:rgba(200,236,212,.25);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- STATUS BAR -->
+  <div class="statusbar">
+    <div class="sb-left" onclick="window.location.href='app_ponto.html'">
+      <div class="sb-avatar" id="sbAvatar">🌱</div>
+      <div>
+        <div class="sb-user" id="sbNome">--</div>
+        <div class="sb-nivel" id="sbNivel">Nível --</div>
+      </div>
+    </div>
+    <div class="sb-hora" id="sbHora">--:--</div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <button class="tbtn on" id="btnVer"   onclick="setModo('ver',this)">👁 Ver</button>
+    <button class="tbtn"    id="btnMover" onclick="setModo('mover',this)">↔ Mover</button>
+    <div class="tbtn-sep"></div>
+    <button class="tbtn n4" id="btnIrrig" onclick="setModo('irrig_zona',this)" style="display:none">💧 Zona irrig.</button>
+    <button class="tbtn n4" id="btnSol"   onclick="setModo('sol',this)"        style="display:none">☀️ Zona sol</button>
+    <button class="tbtn n4" id="btnZona"  onclick="setModo('zona',this)"       style="display:none">🌡️ Zona calor</button>
+  </div>
+
+  <!-- SUGESTÃO -->
+  <div class="sugestao-bar" id="sugestaoBar"></div>
+
+  <!-- ABAS CORREDOR -->
+  <div class="corredor-tabs" id="corredorTabs"></div>
+
+  <!-- LEGENDA FIXA -->
+  <div style="background:rgba(0,0,0,.25);padding:5px 10px;display:flex;gap:10px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.05)">
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(180,180,180,.4)"></div>Vazio</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(76,175,112,.6)"></div>Ativo</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(176,48,32,.8)"></div>Urgente</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(42,80,128,.7)"></div>Sem água</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(200,124,42,.7)"></div>Pronto</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(200,160,48,.7)"></div>Rust.</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(80,200,100,.6)"></div>Semeado</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(210,170,20,.6)"></div>Germ.</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><div style="width:8px;height:8px;border-radius:2px;background:rgba(140,80,200,.55)"></div>Recup.</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><span style="font-size:9px">💧</span>Molhado</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><span style="font-size:9px">☀️</span>Sol pleno</div>
+    <div style="display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);white-space:nowrap;flex-shrink:0"><span style="font-size:9px">⛅</span>Meia sombra</div>
+  </div>
+
+  <!-- MAPA -->
+  <div class="mapa" id="areaMap">
+    <div class="loading">Carregando mapa...</div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <a class="nav-i" href="app_ponto.html"><span class="nav-ico">📋</span><span class="nav-lbl">Ponto</span></a>
+    <a class="nav-i on"><span class="nav-ico">🗺️</span><span class="nav-lbl">Mapa</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_lotes.html')"><span class="nav-ico">🌱</span><span class="nav-lbl">Lotes</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_especies.html')"><span class="nav-ico">🌿</span><span class="nav-lbl">Espécies</span></a>
+    <a class="nav-i" id="navRel" href="#" onclick="navegar('app_relatorio.html')" style="display:none"><span class="nav-ico">📊</span><span class="nav-lbl">Relatório</span></a>
+    <a class="nav-i" id="navGes" href="#" onclick="navegar('app_gestor.html')" style="display:none"><span class="nav-ico">🎯</span><span class="nav-lbl">Gestão</span></a>
+  </div>
+</div>
+
+<!-- MINI-FICHA -->
+<div class="modal-ov" id="modalFicha" onclick="fecharModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="fichaConteudo"><div class="loading" style="height:80px">Carregando...</div></div>
+  </div>
+</div>
+
+<!-- PAINEL ZONA CALOR (existente) -->
+<div class="zona-panel" id="zonaPanel">
+  <div class="zp-titulo">Zona de calor · <span id="zonaCount">0</span> lote(s)</div>
+  <div style="font-size:11px;color:var(--am);background:var(--amc);padding:5px 9px;border-radius:6px;margin-bottom:8px">Toque nos lotes para marcar</div>
+  <div class="zp-row">
+    <div class="campo"><label>Nome</label><input type="text" id="zonaNome" placeholder="ex: Canto sul"></div>
+    <div class="campo"><label>Nível</label>
+      <select id="zonaNivel"><option value="atencao">🟠 Atenção</option><option value="critico">🔴 Crítico</option></select>
+    </div>
+  </div>
+  <div class="zp-btns">
+    <button class="zp-btn cancel" onclick="cancelarZona()">Cancelar</button>
+    <button class="zp-btn ok" onclick="salvarZona()">Salvar zona</button>
+  </div>
+</div>
+
+<!-- PAINEL ZONA IRRIGAÇÃO -->
+<div class="zona-panel" id="painelIrrig">
+  <div class="zp-titulo">💧 Zona de irrigação automática · <span id="irrigCount">0</span> célula(s)</div>
+  <div style="font-size:11px;color:rgba(42,80,180,.9);background:rgba(42,80,180,.08);border:1px solid rgba(42,80,180,.2);padding:5px 9px;border-radius:6px;margin-bottom:8px">Toque nas células (áreas vazias da grade) para marcar onde os canos chegam</div>
+  <div class="campo" style="margin-bottom:8px"><label>Nome da zona</label><input type="text" id="zonaIrrigNome" placeholder="ex: Bancada norte"></div>
+  <div class="zp-btns">
+    <button class="zp-btn cancel" onclick="setModo('ver',document.getElementById('btnVer'))">Cancelar</button>
+    <button class="zp-btn ok" style="background:#2a50b4" onclick="salvarZonaIrrigacao()">Salvar zona</button>
+  </div>
+</div>
+
+<!-- PAINEL ZONA SOL -->
+<div class="zona-panel" id="painelSol">
+  <div class="zp-titulo">☀️ Zona de sol · <span id="solCount">0</span> célula(s)</div>
+  <div style="font-size:11px;color:rgba(180,130,0,.9);background:rgba(200,160,20,.08);border:1px solid rgba(200,160,20,.3);padding:5px 9px;border-radius:6px;margin-bottom:8px">Toque nas células para marcar a incidência de sol</div>
+  <div class="zp-row">
+    <div class="campo"><label>Nome</label><input type="text" id="zonaSolNome" placeholder="ex: Área leste"></div>
+    <div class="campo"><label>Nível de sol</label>
+      <select id="zonaSolNivel">
+        <option value="pleno">☀️ Sol pleno</option>
+        <option value="meia_sombra">⛅ Meia sombra</option>
+        <option value="sombra">🌑 Sombra</option>
+      </select>
+    </div>
+  </div>
+  <div class="zp-btns">
+    <button class="zp-btn cancel" onclick="setModo('ver',document.getElementById('btnVer'))">Cancelar</button>
+    <button class="zp-btn ok" style="background:#8a6a00" onclick="salvarZonaSol()">Salvar zona</button>
+  </div>
+</div>
+
+<!-- PAINEL REGA MANUAL -->
+<div class="zona-panel" id="painelRegar">
+  <div class="zp-titulo">🪣 Rega manual · <span id="regarCount">0</span> lote(s)</div>
+  <div style="font-size:11px;color:var(--cz);background:var(--ar);padding:5px 9px;border-radius:6px;margin-bottom:8px">Toque nos lotes que você regou com regador agora</div>
+  <div class="zp-btns">
+    <button class="zp-btn cancel" onclick="setModo('ver',document.getElementById('btnVer'))">Cancelar</button>
+    <button class="zp-btn ok" onclick="confirmarRega()">✓ Confirmar rega</button>
+  </div>
+</div>
+
+<!-- PAINEL SEMEAR -->
+<div class="zona-panel" id="painelSemear">
+  <div class="zp-titulo">🌱 Semeadura · <span id="semearInfo"></span></div>
+  <div style="font-size:11px;color:var(--cz);background:var(--ar);padding:5px 9px;border-radius:6px;margin-bottom:8px">
+    Lote selecionado: <strong id="semearCount">nenhum</strong>
+  </div>
+  <div class="zp-btns">
+    <button class="zp-btn cancel" onclick="setModo('ver',document.getElementById('btnVer'))">Cancelar</button>
+    <button class="zp-btn ok" style="background:var(--v3)" onclick="confirmarSemeadura()">✓ Semear</button>
+  </div>
+</div>
+
+<!-- PAINEL LIGAR IRRIGAÇÃO (aparece no modo regar para nível 2+) -->
+<div id="painelLigarIrrig" style="display:none;position:fixed;bottom:80px;left:10px;right:10px;z-index:40">
+  <button onclick="ligarIrrigacao()"
+    style="width:100%;padding:14px;background:#2a50b4;color:white;border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.3)">
+    💧 Ligar irrigação automática
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// ESTADO
+// ============================================================
+const S = {
+  usuario:      null,
+  dados:        null,
+  modo:         'ver',          // ver | mover | zona
+  corredorAtivo:1,
+  loteSel:      null,
+  lotesZona:    [],
+  nCorredores:  6,
+  // Irrigação e sol
+  zonas_irrigacao: [],
+  zonas_sol:       [],
+  urgencias:       {}, // { lote_id: {nivel, horas_atras, tipo, na_zona, recomendacao_2x} }
+  replantios:      {}, // { lote_id: {dias, fase, germinacao} }
+  ultima_irrig:    {}, // { lote_id: {ultima_em, tipo, horas_atras} }
+  celulasIrrig:    [],
+  celulasSol:      [],
+  lotesRegar:      [],
+  notificacoes:    [],
+  _voltarPonto:    false,
+  _sementesPorUnidade: null,
+  loteParaSemear:  null,
+};
+
+const STATUS_CSS = {
+  vazio:'st-vazio', ativo:'st-ativo', urgente:'st-urgente',
+  aguardando_agua:'st-agua', pronto:'st-pronto',
+  rustificando:'st-rust', sementeira:'st-sement',
+};
+const STATUS_LBL = {
+  vazio:'Vazio', ativo:'Ativo', urgente:'Urgente',
+  aguardando_agua:'Sem água', pronto:'Pronto', rustificando:'Rustificando',
+};
+const ATENCAO_ICO = {
+  zona_inadequada:'☀️', especie_sensivel:'⚡',
+  historico_ocorrencia:'⚠️', gestor_definiu:'👁️',
+};
+const nomesNivel = {1:'Iniciante',2:'Operacional',3:'Técnico',4:'Gestor',5:'Gestor'};
+
+// ============================================================
+// INIT — nível da API, não do localStorage
+// ============================================================
+(async function init() {
+  try {
+    const r = await api('api_auth.php',{acao:'verificar'});
+    if (!r.ok){window.location.href='app_login.html';return;}
+    S.usuario = r.dados.usuario;
+    localStorage.setItem('vf_usuario', JSON.stringify(S.usuario));
+  } catch(e) {
+    const u = localStorage.getItem('vf_usuario');
+    if (!u){window.location.href='app_login.html';return;}
+    S.usuario = JSON.parse(u);
+  }
+
+  document.getElementById('sbAvatar').textContent = S.usuario.avatar_emoji||'🌱';
+  document.getElementById('sbNome').textContent   = S.usuario.apelido||S.usuario.nome;
+  document.getElementById('sbNivel').textContent  = `Nível ${S.usuario.nivel} · ${nomesNivel[S.usuario.nivel]||''}`;
+  atualizarHora(); setInterval(atualizarHora,30000);
+
+  const nivel = parseInt(S.usuario.nivel);
+  if (nivel >= 4){
+    document.getElementById('btnZona').style.display  = '';
+    document.getElementById('btnIrrig').style.display = '';
+    document.getElementById('btnSol').style.display   = '';
+    document.getElementById('navRel').style.display   = 'flex';
+    document.getElementById('navGes').style.display   = 'flex';
+  }
+
+  await carregarMapa();
+  await carregarZonasIrrigacao();
+
+  // URL param: ?modo=regar → ativa seleção de lotes e volta ao ponto ao confirmar
+  const params = new URLSearchParams(location.search);
+  if (params.get('modo') === 'regar') {
+    S._voltarPonto = true;
+    ativarModoRegar();
+  }
+  if (params.get('modo') === 'irrigar') {
+    await ativarIrrigacaoAutomatica();
+    window.location.href = 'app_ponto.html';
+  }
+  if (params.get('modo') === 'semear') {
+    S._voltarPonto = true;
+    S._sementesPorUnidade = params.get('sementes') || 'bandeja';
+    ativarModoSemear();
+  }
+})();
+
+function atualizarHora(){
+  document.getElementById('sbHora').textContent =
+    new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ============================================================
+// CARREGAR MAPA
+// ============================================================
+async function carregarMapa(){
+  try {
+    const r = await api('api_mapa.php',{acao:'carregar'});
+    if (!r.ok) throw new Error(r.erro);
+    S.dados       = r.dados;
+    S.nCorredores = Math.max(6, r.dados.n_corredores||6);
+    renderTabs();
+    renderSugestoes(r.dados.sugestoes);
+    renderCorredorAtivo();
+  } catch(e) {
+    document.getElementById('areaMap').innerHTML =
+      `<div class="loading">Erro: ${e.message}</div>`;
+  }
+}
+
+// ============================================================
+// ABAS DE CORREDOR
+// ============================================================
+function renderTabs(){
+  const tabs = document.getElementById('corredorTabs');
+  let html = '';
+  for (let c=1; c<=S.nCorredores; c++){
+    const lotes = S.dados.por_corredor[c]||[];
+    const temUrgente = lotes.some(l=>l.status==='urgente');
+    const temAtencao = lotes.some(l=>l.modo_atencao!=='nenhum');
+    html += `<div class="ctab${c===S.corredorAtivo?' on':''}" onclick="mudarCorredor(${c})">
+      CORREDOR ${c}
+      ${temUrgente||temAtencao?'<div class="ctab-badge"></div>':''}
+    </div>`;
+  }
+  tabs.innerHTML = html;
+}
+
+function mudarCorredor(c){
+  S.corredorAtivo = c;
+  renderTabs();
+  renderCorredorAtivo();
+  // Rola a aba ativa para o centro
+  const tab = document.querySelector('.ctab.on');
+  if (tab) tab.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+}
+
+// ============================================================
+// SWIPE ENTRE CORREDORES
+// Detecta arrasto horizontal na área do mapa
+// ============================================================
+(function initSwipe(){
+  let startX = 0, startY = 0, startC = 1;
+  let isDragging = false;
+
+  const area = document.getElementById('areaMap');
+
+  function onStart(x, y){
+    startX = x; startY = y;
+    startC = S.corredorAtivo;
+    isDragging = true;
+  }
+  function onEnd(x, y){
+    if (!isDragging) return;
+    isDragging = false;
+    const dx = x - startX;
+    const dy = Math.abs(y - startY);
+    // Só muda corredor se arrasto horizontal > 60px e mais horizontal que vertical
+    if (Math.abs(dx) < 60 || dy > Math.abs(dx) * 0.6) return;
+    // Verifica que não está no modo mover (não queremos mudar corredor ao posicionar lote)
+    if (S.modo === 'mover') return;
+    if (dx < 0 && S.corredorAtivo < S.nCorredores) mudarCorredor(S.corredorAtivo + 1);
+    if (dx > 0 && S.corredorAtivo > 1)             mudarCorredor(S.corredorAtivo - 1);
+  }
+
+  // Touch
+  area.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    onStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, {passive:true});
+  area.addEventListener('touchend', e => {
+    onEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+  }, {passive:true});
+
+  // Mouse (para desktop)
+  area.addEventListener('mousedown', e => onStart(e.clientX, e.clientY));
+  area.addEventListener('mouseup',   e => onEnd(e.clientX, e.clientY));
+})();
+
+// ============================================================
+// RENDER GRADE DO CORREDOR ATIVO
+// Grade: 4 colunas × N linhas (máximo 15)
+// Cada célula [linha][col] pode ter até 2 lotes lado a lado
+function renderCorredorAtivo(){
+  const lotes = S.dados.por_corredor[S.corredorAtivo]||[];
+
+  const celulas = {};
+  const maxLinha = { val: 1 };
+
+  lotes.forEach(l => {
+    const lin = l.grade_linha || 1;
+    const col = l.grade_col   || 1;
+    if (!celulas[lin])       celulas[lin]      = {};
+    if (!celulas[lin][col])  celulas[lin][col] = [];
+    celulas[lin][col].push(l);
+    if (lin > maxLinha.val) maxLinha.val = lin;
+  });
+
+  const semPosicao = (S.dados.sem_corredor||[]).filter(l => !l.corredor);
+
+  // Linhas extras adicionadas pelo gestor (persistem enquanto a aba está aberta)
+  const extras = S.linhasExtras?.[S.corredorAtivo] || 0;
+  const nLinhas = Math.max(maxLinha.val, 3) + extras;
+
+  let html = '<div class="grade">';
+
+  // Mapa de célula → zona para colorir as células
+  const mapaIrrigCel = {};
+  S.zonas_irrigacao.forEach(z => {
+    (z.celulas||[]).forEach(c => {
+      mapaIrrigCel[`${c.corredor}-${c.linha}-${c.col}`] = true;
+    });
+  });
+  const mapaSolCel = {};
+  S.zonas_sol.forEach(z => {
+    (z.celulas||[]).forEach(c => {
+      mapaSolCel[`${c.corredor}-${c.linha}-${c.col}`] = z.nivel;
+    });
+  });
+
+  for (let lin=1; lin<=nLinhas; lin++){
+    for (let col=1; col<=4; col++){
+      const celLotes = (celulas[lin]?.[col]) || [];
+      const chave = `${S.corredorAtivo}-${lin}-${col}`;
+      const temIrrig = mapaIrrigCel[chave];
+      const nivelSol = mapaSolCel[chave];
+
+      // Estilo da célula conforme zona
+      let celStyle = '';
+      if (temIrrig) celStyle = 'background:rgba(42,80,180,.12);border-color:rgba(100,160,255,.25);';
+      if (nivelSol === 'pleno')       celStyle += 'box-shadow:inset 0 0 0 1px rgba(232,160,32,.3);';
+      if (nivelSol === 'meia_sombra') celStyle += 'box-shadow:inset 0 0 0 1px rgba(180,180,80,.2);';
+
+      let celHtml = '';
+      celLotes.forEach(l => { celHtml += _renderLote(l); });
+
+      if (S.modo === 'mover' && celLotes.length < 2){
+        celHtml += `<div class="slot-vazio mover-alvo" onclick="colocarLote(${S.corredorAtivo},${lin},${col})">
+          <span class="sv-plus">＋</span>
+        </div>`;
+      } else if (celLotes.length === 0){
+        // Ícone de zona na célula vazia
+        const zonaIco = temIrrig ? '💧' : (nivelSol ? (nivelSol==='pleno'?'☀️':nivelSol==='meia_sombra'?'⛅':'🌑') : '·');
+        celHtml += `<div class="slot-vazio"><span class="sv-plus" style="font-size:${temIrrig||nivelSol?'11px':'13px'};opacity:${temIrrig||nivelSol?.3:.07}">${zonaIco}</span></div>`;
+      }
+
+      html += `<div class="celula" data-lin="${lin}" data-col="${col}" style="${celStyle}"
+        onclick="clicarCelula(${S.corredorAtivo},${lin},${col},this)">${celHtml}</div>`;
+    }
+    if (lin % 5 === 0 && lin < nLinhas){
+      html += '<div class="linha-sep"></div>';
+    }
+  }
+
+  html += '</div>';
+
+  // Botão + linha
+  html += `<div style="display:flex;justify-content:center;padding:8px 0">
+    <button onclick="adicionarLinha()" style="background:rgba(76,175,112,.15);border:1px dashed rgba(76,175,112,.3);border-radius:8px;padding:6px 20px;color:rgba(76,175,112,.6);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer">
+      + linha no corredor ${S.corredorAtivo}
+    </button>
+  </div>`;
+
+  if (semPosicao.length){
+    html += `<div style="padding:8px 0 4px;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.2)">Sem posição no mapa</div>`;
+    html += '<div style="display:flex;flex-wrap:wrap;gap:5px;">';
+    semPosicao.forEach(l => { html += _renderLote(l); });
+    html += '</div>';
+  }
+
+  document.getElementById('areaMap').innerHTML = html;
+}
+
+function adicionarLinha(){
+  if(!S.linhasExtras) S.linhasExtras = {};
+  S.linhasExtras[S.corredorAtivo] = (S.linhasExtras[S.corredorAtivo]||0) + 1;
+  renderCorredorAtivo();
+}
+
+// Classe de altura conforme quantidade
+function _altCls(qtd){
+  if (qtd <  30) return 'xs';
+  if (qtd <= 60) return 'sm';
+  if (qtd <= 90) return 'md';
+  return 'lg';
+}
+
+// ── Render de um lote com todos os indicadores ──
+function _renderLote(l){
+  const css    = STATUS_CSS[l.status]||'st-ativo';
+  const nome   = l.nome_exibicao || l.nome_popular || '—';
+  const qtd    = l.qtd_atual;
+  const emb    = l.embalagem_atual;
+  const isBand = emb === 'tubete' && l.tipo_lote !== 'vazio';
+  const altCls = isBand ? 'bandeja' : _altCls(qtd);
+  const isSel  = S.modo==='mover' && S.loteSel===l.id ? 'lote-sel' : '';
+  const isRegar= S.modo==='regar' && S.lotesRegar.includes(l.id) ? 'lote-regar-sel' : '';
+
+  // Cor por fase (sobrepõe status quando relevante)
+  const FASE_CLS = {
+    semeadura:         'fase-semeadura',
+    germinacao:        'fase-germinacao',
+    crescimento_tubete:'',   // verde médio padrão
+    crescimento_saco:  '',   // verde médio padrão
+  };
+  // Recuperação pós-replantio = lote criado há ≤14 dias
+  const replant = S.replantios[l.id];
+  const faseCls = l.tipo_lote==='vazio' ? '' :
+                  (replant?.fase==='decisivo'||replant?.fase==='critico'||replant?.fase==='acompanhar')
+                    ? 'fase-recuperacao'
+                    : (FASE_CLS[l.fase_atual] ?? '');
+
+  // Textura por embalagem
+  const tubeteCls = emb === 'tubete' ? 'tubete-tex' : emb === 'sementeira' ? 'sementeira-tex' : '';
+
+  // Ícone hídrico — canto inferior esquerdo
+  const urg      = S.urgencias[l.id];
+  const irrigInfo= S.ultima_irrig[l.id];
+  let irrigIco = '';
+  if (urg) {
+    if (urg.nivel === 'urgente') {
+      irrigIco = '<span style="position:absolute;bottom:3px;left:3px;font-size:9px;line-height:1">🔥🔥</span>';
+    } else if (urg.nivel === 'atencao') {
+      irrigIco = '<span style="position:absolute;bottom:3px;left:3px;font-size:10px;line-height:1">🔥</span>';
+    } else if (irrigInfo) {
+      // Molhado recentemente — gota para todos (automático ou manual, mesma gota)
+      irrigIco = `<span style="position:absolute;bottom:3px;left:3px;font-size:10px;line-height:1">💧</span>`;
+    }
+  } else if (!irrigInfo && l.tipo_lote !== 'vazio') {
+    // Nunca foi regado — fogo imediatamente se não é vazio
+    irrigIco = '<span style="position:absolute;bottom:3px;left:3px;font-size:10px;line-height:1">🔥</span>';
+  }
+
+  // ── Replantio / germinação — canto superior esquerdo ──
+  let replantIco = '';
+  if (replant) {
+    if (replant.fase === 'decisivo') {
+      replantIco = '<span style="position:absolute;top:2px;left:3px;font-size:9px;line-height:1">🌱🌱</span>';
+    } else if (replant.fase === 'critico' || replant.fase === 'acompanhar' || replant.germinacao) {
+      replantIco = '<span style="position:absolute;top:2px;left:3px;font-size:10px;line-height:1">🌱</span>';
+    }
+  }
+
+  // ── Sol — canto inferior direito ──
+  const solIco = l._zona_sol
+    ? `<span style="position:absolute;bottom:3px;right:18px;font-size:8px;line-height:1">${
+        l._zona_sol==='pleno'?'☀️':l._zona_sol==='meia_sombra'?'⛅':'🌑'
+      }</span>` : '';
+
+  // ── Tag (urgente/pronto/vazio) — canto superior direito ──
+  let tag = '';
+  if (l.tipo_lote==='vazio')     tag = '<div class="lote-tag vaz">VAZ</div>';
+  else if (l.status==='urgente') tag = '<div class="lote-tag al">!</div>';
+  else if (l.status==='pronto')  tag = '<div class="lote-tag am">✓</div>';
+
+  // Ícone atenção gestor — NÃO aparece se já tem ícone de urgência hídrica no mesmo canto
+  const atencaoIco = (l.modo_atencao && l.modo_atencao!=='nenhum' && !urg?.nivel)
+    ? `<span style="position:absolute;top:2px;left:3px;font-size:9px">${ATENCAO_ICO[l.modo_atencao]||'👁️'}</span>` : '';
+
+  // ── Ícone de fase — centro do card ──
+  const FASE_ICO = {
+    vazio:             '',
+    semeadura:         '🌰',
+    germinacao:        '🌱',
+    adaptacao:         '🌱',
+    crescimento_tubete:'🌿',
+    crescimento_saco:  '🌿',
+    rustificacao:      '🌳',
+    expedicao:         '📦',
+  };
+  const faseIco = l.tipo_lote==='vazio' ? '' :
+    (l.status==='pronto' ? '🌳✓' : (FASE_ICO[l.fase_atual] || ''));
+
+  return `<div class="lote ${css} ${faseCls} ${tubeteCls} ${altCls} ${isSel} ${isRegar}" data-id="${l.id}" onclick="clicarLote(${l.id},event)">
+    ${tag}${replantIco}${atencaoIco}
+    <div class="lote-nome" style="padding-left:${replant||l.modo_atencao?'14px':'0'}">${faseIco?`<span style="opacity:.5;margin-right:2px;font-size:8px">${faseIco}</span>`:''}${nome}</div>
+    <div class="lote-qtd" style="text-align:right">${qtd}</div>
+    ${irrigIco}${solIco}
+  </div>`;
+}
+
+// ============================================================
+// ZONAS DE IRRIGAÇÃO E SOL
+// ============================================================
+async function carregarZonasIrrigacao(){
+  try{
+    const r = await api('api_irrigacao.php',{acao:'carregar_zonas'});
+    if(!r.ok) return;
+    S.zonas_irrigacao = r.dados.zonas_irrigacao || [];
+    S.zonas_sol       = r.dados.zonas_sol       || [];
+    S.urgencias       = r.dados.urgencias       || {};
+    S.replantios      = r.dados.replantios      || {};
+    S.ultima_irrig    = r.dados.ultima_irrig    || {};
+    S.notificacoes    = r.dados.notificacoes    || [];
+    _anotarZonasNosLotes();
+    _mostrarNotificacoes();
+  }catch(e){
+    // api_irrigacao.php pode não existir ainda — ignora silenciosamente
+  } finally {
+    renderCorredorAtivo();
+  }
+}
+
+function _mostrarNotificacoes(){
+  S.notificacoes.forEach(n => {
+    const nome = n.nome_display || n.nome_popular || 'Lote';
+    const icone = n.tipo === 'especie_morrendo' ? '🔥🔥' : '🌱';
+    _popup(`${icone} ${nome}`, n.mensagem, n.id);
+  });
+}
+
+function _popup(titulo, msg, notif_id){
+  const id = 'popup_' + Date.now();
+  const el = document.createElement('div');
+  el.id = id;
+  el.style.cssText = `position:fixed;top:60px;left:50%;transform:translateX(-50%);
+    background:var(--v2);border:1px solid rgba(76,175,112,.3);border-radius:14px;
+    padding:12px 16px;z-index:300;max-width:340px;width:90vw;
+    box-shadow:0 8px 32px rgba(0,0,0,.4);animation:slideDown .3s ease`;
+  el.innerHTML = `
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--vg);margin-bottom:4px;font-weight:600">${titulo}</div>
+    <div style="font-size:12px;color:rgba(200,236,212,.7);line-height:1.4">${msg}</div>
+    <button onclick="lerNotif(${notif_id},'${id}')"
+      style="margin-top:8px;background:rgba(76,175,112,.2);border:1px solid rgba(76,175,112,.3);
+             border-radius:6px;padding:4px 10px;font-family:'DM Mono',monospace;font-size:9px;
+             color:var(--vg);cursor:pointer">Ok, entendi</button>`;
+  document.body.appendChild(el);
+  // Auto-fecha após 8s se não interagir
+  setTimeout(()=>el.remove(), 8000);
+}
+
+async function lerNotif(id, elemId){
+  document.getElementById(elemId)?.remove();
+  if(id) await api('api_irrigacao.php',{acao:'ler_notificacao',id}).catch(()=>{});
+}
+
+function _anotarZonasNosLotes(){
+  const mapaIrrig = {};
+  S.zonas_irrigacao.forEach(z => {
+    (z.celulas||[]).forEach(c => {
+      mapaIrrig[`${c.corredor}-${c.linha}-${c.col}`] = z.id;
+    });
+  });
+  const mapaSol = {};
+  S.zonas_sol.forEach(z => {
+    (z.celulas||[]).forEach(c => {
+      mapaSol[`${c.corredor}-${c.linha}-${c.col}`] = z.nivel;
+    });
+  });
+  const anotar = l => {
+    const k = `${l.corredor}-${l.grade_linha}-${l.grade_col}`;
+    l._zona_irrig = !!mapaIrrig[k];
+    l._zona_sol   = mapaSol[k] || null;
+  };
+  Object.values(S.dados?.por_corredor||{}).flat().forEach(anotar);
+  (S.dados?.sem_corredor||[]).forEach(anotar);
+}
+
+// Chamado pelo init quando modo=semear na URL
+function ativarModoSemear(){
+  S.loteParaSemear = null;
+  S.modo = 'semear';
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('painelSemear').classList.add('vis');
+  document.getElementById('semearInfo').textContent =
+    S._sementesPorUnidade && S._sementesPorUnidade!=='bandeja'
+      ? `${S._sementesPorUnidade} semente(s)/unidade`
+      : 'Bandeja / sementeira';
+  renderCorredorAtivo();
+  toast('Toque num lote vazio para semear');
+}
+
+async function confirmarSemeadura(){
+  if(!S.loteParaSemear){ toast('Selecione um lote vazio'); return; }
+  try{
+    const r = await api('api_lotes.php',{
+      acao:'associar_especie',
+      lote_id: S.loteParaSemear,
+      fase_destino: 'semeadura',
+      sementes_por_unidade: S._sementesPorUnidade,
+    });
+    if(!r.ok) throw new Error(r.erro);
+    toast('✓ Semeadura registrada!');
+    S.loteParaSemear = null;
+    if(S._voltarPonto){
+      setTimeout(()=>window.location.href='app_ponto.html', 800);
+      return;
+    }
+    setModo('ver', document.getElementById('btnVer'));
+    await carregarMapa();
+  }catch(e){ toast(e.message); }
+}
+
+// Chamado pela tela de atividades após registrar "regar"
+// Recebe callback para confirmar quando o usuário terminar
+function ativarModoRegar(callbackConfirmar){
+  S._regarCallback = callbackConfirmar || null;
+  S.lotesRegar = [];
+  S.modo = 'regar';
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('zonaPanel').classList.remove('vis');
+  document.getElementById('painelIrrig').classList.remove('vis');
+  document.getElementById('painelSol').classList.remove('vis');
+  document.getElementById('painelRegar').classList.add('vis');
+  document.getElementById('painelLigarIrrig').style.display = 'none';
+  document.getElementById('regarCount').textContent = '0';
+  renderCorredorAtivo();
+  toast('Toque nos lotes que você regou com regador');
+}
+
+// Chamado pela tela de atividades após registrar "irrigacao" (automática)
+async function ativarIrrigacaoAutomatica(){
+  try{
+    const r = await api('api_irrigacao.php',{acao:'ligar_irrigacao'});
+    if(!r.ok) throw new Error(r.erro);
+    toast(r.dados.mensagem);
+    await carregarZonasIrrigacao();
+  }catch(e){ toast(e.message); }
+}
+
+// ── REGA MANUAL — confirmar lotes selecionados ──────────────
+async function confirmarRega(){
+  if(!S.lotesRegar.length){ toast('Toque nos lotes que regou'); return; }
+  try{
+    const r = await api('api_irrigacao.php',{acao:'regar_manual',lote_ids:S.lotesRegar});
+    if(!r.ok) throw new Error(r.erro);
+    toast(r.dados.mensagem);
+    S.lotesRegar = [];
+    if(S._voltarPonto){
+      setTimeout(()=>window.location.href='app_ponto.html', 800);
+      return;
+    }
+    setModo('ver', document.getElementById('btnVer'));
+    await carregarZonasIrrigacao();
+  }catch(e){ toast(e.message); }
+}
+
+// ── SALVAR ZONA DE IRRIGAÇÃO — dupla confirmação ────────────
+async function salvarZonaIrrigacao(){
+  const nome = document.getElementById('zonaIrrigNome')?.value?.trim();
+  if(!nome){ toast('Informe o nome da zona'); return; }
+  if(!S.celulasIrrig.length){ toast('Toque nas células para marcar a zona'); return; }
+
+  // Dupla confirmação
+  const n = S.celulasIrrig.length;
+  const conf = confirm(`⚠️ Confirmar zona de irrigação?\n\n"${nome}" — ${n} célula(s)\n\nEssa configuração define quais áreas são molhadas automaticamente. Isso raramente precisa mudar.`);
+  if(!conf) return;
+
+  try{
+    const r = await api('api_irrigacao.php',{
+      acao:'salvar_zona_irrigacao',
+      nome,
+      celulas: S.celulasIrrig,
+    });
+    if(!r.ok) throw new Error(r.erro);
+    toast(`✓ ${r.dados.mensagem}`);
+    S.celulasIrrig = [];
+    setModo('ver', document.getElementById('btnVer'));
+    await carregarZonasIrrigacao();
+  }catch(e){ toast(e.message); }
+}
+
+// ── SALVAR ZONA DE SOL — dupla confirmação ──────────────────
+async function salvarZonaSol(){
+  const nome  = document.getElementById('zonaSolNome')?.value?.trim();
+  const nivel = document.getElementById('zonaSolNivel')?.value;
+  if(!nome){ toast('Informe o nome da zona'); return; }
+  if(!S.celulasSol.length){ toast('Toque nas células para marcar a zona'); return; }
+
+  const nivelLabel = {pleno:'☀️ Sol pleno', meia_sombra:'⛅ Meia sombra', sombra:'🌑 Sombra'}[nivel] || nivel;
+  const n = S.celulasSol.length;
+  const conf = confirm(`⚠️ Confirmar zona de sol?\n\n"${nome}" — ${nivelLabel} — ${n} célula(s)\n\nIsso afeta como espécies sensíveis são monitoradas. Confirma?`);
+  if(!conf) return;
+
+  try{
+    const r = await api('api_irrigacao.php',{
+      acao:'salvar_zona_sol',
+      nome, nivel,
+      celulas: S.celulasSol,
+    });
+    if(!r.ok) throw new Error(r.erro);
+    toast(`✓ ${r.dados.mensagem}`);
+    S.celulasSol = [];
+    setModo('ver', document.getElementById('btnVer'));
+    await carregarZonasIrrigacao();
+  }catch(e){ toast(e.message); }
+}
+
+// ============================================================
+// SUGESTÕES
+// ============================================================
+function renderSugestoes(sugestoes){
+  const bar = document.getElementById('sugestaoBar');
+  if (!sugestoes?.length){bar.innerHTML='';return;}
+  const s = sugestoes[0];
+  bar.innerHTML = `<div class="sugestao ${s.tipo}" onclick="${s.lote_id?`abrirFicha(${s.lote_id})`:''}">
+    <span class="sug-ico">${s.emoji}</span>
+    <div class="sug-txt"><strong>${s.titulo}</strong><span>${s.texto}</span></div>
+  </div>`;
+}
+
+// ============================================================
+// MODOS
+// ============================================================
+function setModo(modo, btn){
+  // Cancela modo anterior — só limpa seleções se saindo do modo completamente
+  if (S.modo==='zona' && modo!=='zona')       cancelarZona();
+  if (S.modo==='irrig_zona' && modo!=='irrig_zona') { S.celulasIrrig=[]; _limparDestaquesCelulas(); }
+  if (S.modo==='sol' && modo!=='sol')         { S.celulasSol=[];   _limparDestaquesCelulas(); }
+  if (S.modo==='regar' && modo!=='regar')     { S.lotesRegar=[]; }
+  if (S.modo==='semear' && modo!=='semear')   { S.loteParaSemear=null; }
+
+  S.modo    = modo;
+  S.loteSel = null;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+
+  // Esconde todos os painéis
+  document.getElementById('zonaPanel').classList.remove('vis');
+  document.getElementById('painelIrrig').classList.remove('vis');
+  document.getElementById('painelSol').classList.remove('vis');
+  document.getElementById('painelRegar').classList.remove('vis');
+  document.getElementById('painelSemear').classList.remove('vis');
+
+  if (modo==='zona'){
+    S.lotesZona=[];
+    document.getElementById('zonaPanel').classList.add('vis');
+    document.getElementById('zonaCount').textContent='0';
+    toast('Toque nos lotes para marcar a zona quente');
+  }
+  if (modo==='irrig_zona'){
+    S.celulasIrrig=[];
+    document.getElementById('painelIrrig').classList.add('vis');
+    document.getElementById('irrigCount').textContent='0';
+    toast('Toque nas células para marcar a zona de irrigação');
+  }
+  if (modo==='sol'){
+    S.celulasSol=[];
+    document.getElementById('painelSol').classList.add('vis');
+    document.getElementById('solCount').textContent='0';
+    toast('Toque nas células para marcar a zona de sol');
+  }
+  if (modo==='regar'){
+    S.lotesRegar=[];
+    document.getElementById('painelRegar').classList.add('vis');
+    document.getElementById('regarCount').textContent='0';
+    // Nível 2+ também pode ligar a irrigação automática
+    const nivel=parseInt(S.usuario?.nivel||1);
+    document.getElementById('painelLigarIrrig').style.display = nivel>=2 ? '' : 'none';
+    toast('Toque nos lotes que você regou');
+  }
+
+  if (modo==='semear'){
+    S.loteParaSemear = null;
+    document.getElementById('painelSemear').classList.add('vis');
+    document.getElementById('semearInfo').textContent =
+      S._sementesPorUnidade && S._sementesPorUnidade!=='bandeja'
+        ? `${S._sementesPorUnidade} semente(s)/unidade`
+        : 'Bandeja ou sementeira';
+    toast('Toque num lote vazio para semear');
+  }
+
+  renderCorredorAtivo();
+  if (modo==='mover') toast('Selecione um lote e depois a posição destino');
+}
+
+function _limparDestaquesCelulas(){
+  document.querySelectorAll('.celula.sel-irrig,.celula.sel-sol').forEach(el => {
+    el.classList.remove('sel-irrig','sel-sol');
+  });
+}
+
+// ============================================================
+// CLICK NO LOTE / CÉLULA
+// ============================================================
+function clicarLote(id, e){
+  // Modos de célula: não bloquear propagação para que clicarCelula também execute
+  if (S.modo === 'irrig_zona' || S.modo === 'sol') return;
+
+  e.stopPropagation();
+
+  if (S.modo==='zona'){
+    const idx = S.lotesZona.indexOf(id);
+    if (idx>=0) S.lotesZona.splice(idx,1);
+    else        S.lotesZona.push(id);
+    document.getElementById('zonaCount').textContent = S.lotesZona.length;
+    document.querySelectorAll(`.lote[data-id="${id}"]`).forEach(el =>
+      el.style.outline = S.lotesZona.includes(id) ? '2px solid var(--am)' : '');
+    return;
+  }
+
+  if (S.modo==='semear'){
+    // Só aceita lotes vazios
+    const dadosLote = Object.values(S.dados.por_corredor||{}).flat()
+      .concat(S.dados.sem_corredor||[])
+      .find(l=>l.id===id);
+    if (!dadosLote || dadosLote.tipo_lote !== 'vazio'){
+      toast('Selecione um lote vazio');
+      return;
+    }
+    S.loteParaSemear = id;
+    document.getElementById('semearCount').textContent = dadosLote.nome_exibicao || dadosLote.codigo || id;
+    document.querySelectorAll('.lote').forEach(el=>el.classList.remove('lote-regar-sel'));
+    document.querySelectorAll(`.lote[data-id="${id}"]`).forEach(el=>el.classList.add('lote-regar-sel'));
+    return;
+  }
+
+  if (S.modo==='regar'){
+    const idx = S.lotesRegar.indexOf(id);
+    if (idx>=0) S.lotesRegar.splice(idx,1);
+    else        S.lotesRegar.push(id);
+    document.getElementById('regarCount').textContent = S.lotesRegar.length;
+    document.querySelectorAll(`.lote[data-id="${id}"]`).forEach(el =>
+      el.classList.toggle('lote-regar-sel', S.lotesRegar.includes(id)));
+    return;
+  }
+
+  if (S.modo==='mover'){
+    if (!S.loteSel){
+      S.loteSel = id;
+      renderCorredorAtivo();
+      toast('Lote selecionado. Toque na posição destino.');
+    } else if (S.loteSel===id){
+      S.loteSel = null;
+      renderCorredorAtivo();
+      toast('Seleção cancelada.');
+    }
+    return;
+  }
+
+  abrirFicha(id);
+}
+
+function clicarCelula(corredor, linha, col, el){
+  if (S.modo === 'irrig_zona'){
+    const idx = S.celulasIrrig.findIndex(c=>c.corredor===corredor&&c.linha===linha&&c.col===col);
+    if (idx>=0){ S.celulasIrrig.splice(idx,1); el.classList.remove('sel-irrig'); }
+    else        { S.celulasIrrig.push({corredor,linha,col}); el.classList.add('sel-irrig'); }
+    document.getElementById('irrigCount').textContent = S.celulasIrrig.length;
+    return;
+  }
+  if (S.modo === 'sol'){
+    const idx = S.celulasSol.findIndex(c=>c.corredor===corredor&&c.linha===linha&&c.col===col);
+    if (idx>=0){ S.celulasSol.splice(idx,1); el.classList.remove('sel-sol'); }
+    else        { S.celulasSol.push({corredor,linha,col}); el.classList.add('sel-sol'); }
+    document.getElementById('solCount').textContent = S.celulasSol.length;
+  }
+}
+
+// Colocar lote na célula destino
+async function colocarLote(corredor, linha, col){
+  if (!S.loteSel) return;
+  try {
+    const r = await api('api_mapa.php',{acao:'mover',lote_id:S.loteSel,corredor,linha,col});
+    if (!r.ok) throw new Error(r.erro);
+    toast('✓ Lote movido');
+    S.loteSel = null;
+    setModo('ver', document.getElementById('btnVer'));
+    await carregarMapa();
+  } catch(e){ toast(e.message); }
+}
+
+// ============================================================
+// MINI-FICHA
+// ============================================================
+async function abrirFicha(id){
+  document.getElementById('modalFicha').classList.add('vis');
+  document.getElementById('fichaConteudo').innerHTML =
+    '<div class="loading" style="height:80px">Carregando...</div>';
+
+  try {
+    const r = await api('api_mapa.php',{acao:'mini_ficha',lote_id:id});
+    if (!r.ok) throw new Error(r.erro);
+    renderFicha(r.dados);
+  } catch(e){
+    document.getElementById('fichaConteudo').innerHTML =
+      `<div class="loading">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderFicha({lote:l, alertas, permissoes}){
+  const stCss = {
+    vazio:'background:#eee;color:#888',
+    ativo:'background:var(--vp);color:var(--v3)',
+    urgente:'background:var(--alc);color:var(--al)',
+    aguardando_agua:'background:var(--azc);color:var(--az)',
+    pronto:'background:var(--amc);color:var(--am)',
+    rustificando:'background:#fef6d8;color:#a07010',
+  }[l.status]||'background:var(--ar);color:var(--cz)';
+
+  const alertasHtml = alertas.map(a=>
+    `<div class="mf-alerta ${a.tipo}">⚠️ ${a.msg}</div>`
+  ).join('');
+
+  const origemHtml = l.lote_origem_codigo
+    ? `<div style="font-size:11px;color:var(--cz);margin-top:4px">
+        🔗 Originado de ${l.lote_origem_codigo}
+        ${l.enchido_por_nome?' · enchido por '+l.enchido_por_nome:''}
+      </div>` : '';
+
+  const btns = [
+    {c:'p',ico:'📋',lbl:'Ver ficha completa',fn:`irParaLote(${l.id})`},
+    {c:'s',ico:'🌱',lbl:'Registrar visita',  fn:`visitarLote(${l.id})`},
+    permissoes.mover
+      ? {c:'s',ico:'↔',lbl:'Mover lote',fn:`iniciarMover(${l.id})`}
+      : null,
+    permissoes.associar_especie
+      ? {c:'a',ico:'🌿',lbl:'Plantar espécie',fn:`irParaLote(${l.id})`}
+      : null,
+  ].filter(Boolean).map(b=>
+    `<button class="mf-btn ${b.c}" onclick="${b.fn}">
+      <span class="mi">${b.ico}</span>${b.lbl}
+    </button>`
+  ).join('');
+
+  const fase   = {vazio:'Vazio',semeadura:'Semeadura',germinacao:'Germinação',
+    crescimento_tubete:'Crescim. tubete',crescimento_saco:'Crescim. saco',
+    rustificacao:'Rustificação',expedicao:'Expedição'}[l.fase_atual]||l.fase_atual;
+  const emb    = {tubete:'Tubete',saco:'Saco 1L',balde:'Balde'}[l.embalagem_atual]||l.embalagem_atual;
+  const posicao= l.corredor ? `Corredor ${l.corredor}, L${l.grade_linha} C${l.grade_col}` : '—';
+
+  document.getElementById('fichaConteudo').innerHTML = `
+    <div class="mf-wrap">
+      <span class="mf-pill" style="${stCss}">${STATUS_LBL[l.status]||l.status}</span>
+      <div class="mf-titulo">${l.nome_exibicao||l.nome_popular||l.codigo}</div>
+      <div class="mf-sub">${l.tipo_lote==='vazio'
+        ? `${l.qtd_atual} ${emb}(s) ${l.nome_exibicao?.includes('Reuso')?'para replantar':'prontos para plantar'}`
+        : (l.nome_cientifico||'')}</div>
+      ${origemHtml}
+      ${alertasHtml?`<div class="mf-alertas">${alertasHtml}</div>`:''}
+      <div class="mf-grid">
+        <div class="mf-item"><div class="mf-lbl">Quantidade</div><div class="mf-val">${l.qtd_atual}</div></div>
+        <div class="mf-item"><div class="mf-lbl">Embalagem</div><div class="mf-val">${emb}</div></div>
+        <div class="mf-item"><div class="mf-lbl">Fase</div><div class="mf-val">${fase}</div></div>
+        <div class="mf-item"><div class="mf-lbl">Posição</div><div class="mf-val">${posicao}</div></div>
+      </div>
+      <div class="mf-acoes">${btns}</div>
+    </div>
+  `;
+}
+
+function iniciarMover(id){
+  fecharModal({target:document.getElementById('modalFicha')});
+  S.loteSel = id;
+  S.modo = 'mover';
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('btnMover').classList.add('on');
+  renderCorredorAtivo();
+  toast('Toque na posição destino na grade');
+}
+
+function irParaLote(id){
+  fecharModal({target:document.getElementById('modalFicha')});
+  window.location.href=`app_lotes.html?lote_id=${id}`;
+}
+
+function visitarLote(id){
+  fecharModal({target:document.getElementById('modalFicha')});
+  window.location.href=`app_lotes.html?lote_id=${id}&aba=visitas`;
+}
+
+// ============================================================
+// ZONA DE INSOLAÇÃO
+// ============================================================
+async function salvarZona(){
+  const nome  = document.getElementById('zonaNome')?.value?.trim();
+  const nivel = document.getElementById('zonaNivel')?.value;
+  if (!nome)               {toast('Informe o nome');return;}
+  if (!S.lotesZona.length) {toast('Marque ao menos um lote');return;}
+  try {
+    const r = await api('api_mapa.php',{
+      acao:'salvar_zona', nome, nivel,
+      grade_celulas: S.lotesZona.map(id=>({lote_id:id})),
+    });
+    if (!r.ok) throw new Error(r.erro);
+    toast('✓ Zona salva');
+    cancelarZona();
+    await carregarMapa();
+  } catch(e){toast(e.message);}
+}
+
+function cancelarZona(){
+  S.lotesZona=[];
+  document.querySelectorAll('.lote').forEach(el=>el.style.outline='');
+  document.getElementById('zonaPanel').classList.remove('vis');
+  if (document.getElementById('zonaNome')) document.getElementById('zonaNome').value='';
+  if (S.modo==='zona') setModo('ver',document.getElementById('btnVer'));
+}
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function fecharModal(e){
+  if (e.target===document.getElementById('modalFicha'))
+    document.getElementById('modalFicha').classList.remove('vis');
+}
+
+async function api(arq, dados){
+  const token = localStorage.getItem('vf_token');
+  const r = await fetch(`../api/${arq}`,{
+    method:'POST', credentials:'include',
+    headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},
+    body:JSON.stringify(dados),
+  });
+  if (r.status===401){window.location.href='app_login.html';}
+  return r.json();
+}
+
+let _tt;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('vis');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('vis'),2800);
+}
+
+async function navegar(destino){
+  try{
+    const token=localStorage.getItem('vf_token');
+    const r=await fetch('../api/api_ponto.php',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},body:JSON.stringify({acao:'hoje'})});
+    const d=await r.json();
+    if(d.ok && d.dados.tem_entrada_aberta){
+      window.location.href=destino;
+    } else {
+      const t=document.getElementById('toast');
+      if(t){t.textContent='🔒 Registre o ponto primeiro';t.classList.add('vis');setTimeout(()=>t.classList.remove('vis'),2800);}
+      else alert('Registre o ponto primeiro');
+    }
+  }catch(e){ window.location.href='app_ponto.html'; }
+}
+
+</script>
+</body>
+</html>

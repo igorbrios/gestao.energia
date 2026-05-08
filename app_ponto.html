@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<!--
+  app_ponto.html (v6)
+  CORRIGIDO: bloqueio não pisca — mostra loading até ponto ser verificado
+  CORRIGIDO: nível 4-5 sem câmera obrigatória
+  NOVO: botão único "Iniciar atividade" → card com tipos → formulário do tipo
+  NOVO: Regar vai para mapa selecionar lotes
+  NOVO: Irrigação automática disponível para nível 2+
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3d2b">
+<title>Florescer · Ponto</title>
+<link rel="manifest" href="../manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v2:#1a3d2b;--v3:#2d6b45;--v4:#4caf70;
+  --vg:#c8ecd4;--vp:#e8f5ec;--am:#c87c2a;--amc:#fef3e6;
+  --al:#b03020;--alc:#fdecea;--br:#fdfcf8;--ar:#f4f0e8;
+  --pr:#1a1f1c;--cz:#5a6860;--czl:#c8d8cc;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--ar);color:var(--pr);overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;}
+
+.statusbar{background:var(--v2);padding:12px 16px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sb-left{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.sb-avatar{width:28px;height:28px;border-radius:50%;background:rgba(76,175,112,.3);display:flex;align-items:center;justify-content:center;font-size:14px;}
+.sb-user{font-family:'DM Mono',monospace;font-size:11px;color:var(--vg);}
+.sb-nivel{font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,236,212,.4);}
+.sb-right{display:flex;align-items:center;gap:10px;}
+.sb-hora{font-family:'DM Mono',monospace;font-size:12px;color:rgba(200,236,212,.6);}
+.sb-sair{background:rgba(176,48,32,.25);border:1px solid rgba(176,48,32,.4);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:9px;color:#ffb0a0;cursor:pointer;}
+
+.tophead{background:var(--v2);padding:0 16px 14px;flex-shrink:0;}
+.tophead-row{display:flex;align-items:flex-end;justify-content:space-between;}
+.tophead h1{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--vg);}
+.tophead-sub{font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,236,212,.4);letter-spacing:.1em;text-transform:uppercase;margin-top:3px;}
+.score-pill{background:rgba(76,175,112,.2);border:1px solid rgba(76,175,112,.3);border-radius:20px;padding:5px 14px;text-align:center;}
+.score-num{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--v4);line-height:1;}
+.score-lbl{font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);}
+
+.content{flex:1;overflow-y:auto;scrollbar-width:none;}
+.content::-webkit-scrollbar{display:none;}
+
+/* Ponto card */
+.ponto-card{background:var(--br);border-radius:16px;border:1px solid var(--czl);margin:10px 14px 6px;padding:14px 16px;}
+.ponto-titulo{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:10px;}
+.ponto-status{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.ponto-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.ponto-dot.dentro{background:var(--v4);animation:p 2s infinite;}
+.ponto-dot.fora{background:var(--czl);}
+.ponto-dot.carregando{background:var(--cz);animation:p 1s infinite;}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.4}}
+.ponto-texto{font-size:13px;color:var(--pr);}
+.ponto-hora{font-family:'DM Mono',monospace;font-size:11px;color:var(--cz);}
+.ponto-btns{display:flex;gap:8px;margin-top:8px;}
+.btn-ponto{flex:1;padding:12px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-ponto.entrada{background:var(--v3);color:white;}
+.btn-ponto.saida{background:var(--alc);color:var(--al);border:1px solid rgba(176,48,32,.3);}
+.btn-ponto:disabled{background:var(--czl);color:var(--cz);cursor:default;opacity:.6;}
+
+/* Câmera ponto */
+.btn-camera-ponto{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;background:rgba(45,107,69,.15);border:1.5px dashed var(--v3);border-radius:9px;color:var(--v3);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-bottom:8px;}
+.btn-camera-ponto.com-foto{background:var(--vp);border-style:solid;}
+.foto-ponto-mini{width:100%;height:70px;object-fit:cover;border-radius:8px;margin-bottom:8px;}
+
+/* Bloqueio */
+.bloqueio{background:var(--br);border-radius:14px;border:1px solid var(--czl);margin:6px 14px;padding:18px;text-align:center;}
+.bloqueio-ico{font-size:36px;margin-bottom:8px;}
+.bloqueio-txt{font-size:13px;font-weight:600;color:var(--pr);margin-bottom:4px;}
+.bloqueio-sub{font-size:11px;color:var(--cz);line-height:1.5;}
+
+/* Área de atividades */
+.section{padding:0 14px;margin-top:6px;}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.section-titulo{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--cz);}
+.section-count{font-family:'DM Mono',monospace;font-size:9px;background:var(--vp);color:var(--v3);padding:2px 8px;border-radius:10px;}
+
+/* Botão iniciar atividade */
+.btn-iniciar-ativ{width:100%;padding:14px;background:var(--v2);color:var(--vg);border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;}
+.btn-iniciar-ativ:active{background:var(--v3);}
+
+/* Card de seleção de atividade */
+.ativ-card{background:var(--br);border-radius:14px;border:1px solid var(--czl);margin-bottom:10px;overflow:hidden;}
+.ativ-card-header{padding:12px 14px 8px;font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);display:flex;align-items:center;justify-content:space-between;}
+.ativ-card-fechar{background:none;border:none;color:var(--cz);cursor:pointer;font-size:16px;line-height:1;}
+
+/* Grid de tipos dentro do card */
+.tipos-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--czl);}
+.tipo-btn{background:var(--br);padding:12px 4px;cursor:pointer;text-align:center;border:none;}
+.tipo-btn:active{background:var(--ar);}
+.tipo-btn.sel{background:var(--vp);}
+.tipo-ico{font-size:22px;display:block;margin-bottom:3px;}
+.tipo-lbl{font-size:9px;color:var(--cz);font-family:'DM Mono',monospace;}
+.tipo-btn.sel .tipo-lbl{color:var(--v3);}
+
+/* Formulário dentro do card */
+.ativ-form-card{padding:12px 14px;border-top:1px solid var(--czl);display:none;}
+.ativ-form-card.vis{display:block;}
+.campo label{display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px;}
+.campo input,.campo select{width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--pr);outline:none;}
+.campo input:focus{border-color:var(--v3);}
+.campo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.btn-camera{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;cursor:pointer;font-size:12px;color:var(--cz);width:100%;margin-bottom:8px;}
+.btn-camera.com-foto{border-color:var(--v4);color:var(--v3);background:var(--vp);}
+.btn-salvar{width:100%;padding:11px;background:var(--v2);color:var(--vg);border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-salvar:active{background:var(--v3);}
+
+/* Ação especial (regar/irrigar) */
+.ativ-acao-especial{padding:0 14px 12px;}
+.btn-acao-mapa{width:100%;padding:13px;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;}
+.btn-acao-mapa.regar{background:var(--azc);color:var(--az);}
+.btn-acao-mapa.irrigar{background:#2a50b4;color:white;}
+
+/* Lista de atividades */
+.ativ-lista{padding:0 14px 80px;}
+.ativ-item{background:var(--br);border-radius:10px;border:1px solid var(--czl);padding:10px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;}
+.ativ-ico{font-size:20px;flex-shrink:0;}
+.ativ-info{flex:1;}
+.ativ-tipo{font-size:13px;font-weight:500;color:var(--pr);}
+.ativ-desc{font-size:11px;color:var(--cz);margin-top:2px;}
+.ativ-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-top:4px;}
+.ativ-score{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--v3);flex-shrink:0;}
+.ativ-nota{font-family:'DM Mono',monospace;font-size:8px;color:var(--cz);text-align:right;}
+
+/* Bottom nav */
+.bottom-nav{background:var(--br);border-top:1px solid var(--czl);display:flex;padding:6px 0 20px;flex-shrink:0;}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px;text-decoration:none;}
+.nav-ico{font-size:20px;line-height:1;}
+.nav-lbl{font-size:9px;color:var(--cz);font-family:'DM Mono',monospace;}
+.nav-i.on .nav-lbl{color:var(--v3);}
+
+/* Modal perfil */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:flex-end;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-ov.vis{opacity:1;pointer-events:all;}
+.modal-box{background:var(--br);border-radius:20px 20px 0 0;width:100%;max-height:80vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);scrollbar-width:none;padding:0 18px 32px;}
+.modal-box::-webkit-scrollbar{display:none;}
+.modal-ov.vis .modal-box{transform:translateY(0);}
+.modal-handle{width:36px;height:4px;background:var(--czl);border-radius:2px;margin:14px auto 12px;}
+
+/* Tela travada de atividade (saquinhos e irrigação) */
+.tela-travada{position:fixed;inset:0;background:var(--v2);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.tela-travada .tt-ico{font-size:56px;margin-bottom:12px;}
+.tela-travada .tt-titulo{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--vg);margin-bottom:6px;text-align:center;}
+.tela-travada .tt-sub{font-family:'DM Mono',monospace;font-size:11px;color:rgba(200,236,212,.4);text-align:center;margin-bottom:28px;}
+.tela-travada .tt-timer{font-family:'DM Mono',monospace;font-size:52px;font-weight:500;color:var(--v4);letter-spacing:.05em;margin-bottom:8px;}
+.tela-travada .tt-timer.urgente{color:var(--al);animation:p 1s infinite;}
+.tela-travada .tt-meta{font-family:'DM Mono',monospace;font-size:11px;color:rgba(200,236,212,.35);margin-bottom:32px;}
+.tela-travada .campo{width:100%;max-width:320px;margin-bottom:10px;}
+.tela-travada .campo label{display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:rgba(200,236,212,.4);margin-bottom:5px;}
+.tela-travada .campo input{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:18px;color:var(--vg);outline:none;text-align:center;}
+.tela-travada .tt-btn{width:100%;max-width:320px;padding:15px;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;}
+.tela-travada .tt-btn.ok{background:var(--v4);color:var(--v2);}
+.tela-travada .tt-btn.cancel{background:rgba(255,255,255,.07);color:rgba(200,236,212,.5);font-size:13px;}
+.tela-travada .tt-alerta{background:rgba(176,48,32,.2);border:1px solid rgba(176,48,32,.4);border-radius:10px;padding:10px 14px;font-size:12px;color:#ffb0a0;text-align:center;max-width:320px;margin-bottom:16px;line-height:1.5;}
+.tela-travada .tt-prog{width:100%;max-width:320px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.tela-travada .tt-prog-bar{height:100%;background:var(--v4);border-radius:3px;transition:width .5s linear;}
+.tela-travada .tt-prog-bar.ok{background:var(--v4);}
+.tela-travada .tt-prog-bar.alerta{background:var(--am);}
+
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--v2);border:1px solid rgba(76,175,112,.2);border-radius:24px;padding:8px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--vg);z-index:200;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:90vw;}
+.toast.vis{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="statusbar">
+    <div class="sb-left" onclick="abrirPerfil()">
+      <div class="sb-avatar" id="sbAvatar">🌱</div>
+      <div>
+        <div class="sb-user" id="sbNome">--</div>
+        <div class="sb-nivel" id="sbNivel">Nível --</div>
+      </div>
+    </div>
+    <div class="sb-right">
+      <div class="sb-hora" id="sbHora">--:--</div>
+      <div class="sb-sair" onclick="logout()">Sair</div>
+    </div>
+  </div>
+
+  <div class="tophead">
+    <div class="tophead-row">
+      <div>
+        <h1>Ponto</h1>
+        <div class="tophead-sub" id="dataHoje">--</div>
+      </div>
+      <div class="score-pill">
+        <div class="score-num" id="scoreNum">0</div>
+        <div class="score-lbl">pts hoje</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- PONTO -->
+    <div class="ponto-card">
+      <div class="ponto-titulo">Registro de ponto</div>
+      <div class="ponto-status">
+        <div class="ponto-dot carregando" id="pontoDot"></div>
+        <div>
+          <div class="ponto-texto" id="pontoTexto">Verificando...</div>
+          <div class="ponto-hora" id="pontoHora"></div>
+        </div>
+      </div>
+      <div id="pontoFotoArea">
+        <img id="fotoPontoMini" class="foto-ponto-mini" style="display:none">
+      </div>
+      <div class="ponto-btns">
+        <button class="btn-ponto entrada" id="btnEntrada" onclick="registrarPonto('entrada')" disabled>📷 Registrar entrada</button>
+        <button class="btn-ponto saida"   id="btnSaida"   onclick="registrarPonto('saida')"  disabled>📷 Registrar saída</button>
+      </div>
+    </div>
+
+    <!-- BLOQUEIO — visível por padrão, some após ponto verificado -->
+    <div id="bloqueioAtiv" class="bloqueio" style="display:none">
+      <div class="bloqueio-ico">🔒</div>
+      <div class="bloqueio-txt">Registre o ponto primeiro</div>
+      <div class="bloqueio-sub">Registre a entrada para liberar o registro de atividades.</div>
+    </div>
+
+    <!-- ATIVIDADES — oculto até ponto verificado -->
+    <div id="areaAtiv" style="display:none">
+      <div class="section">
+        <div class="section-head">
+          <div class="section-titulo">Atividades de hoje</div>
+          <div class="section-count" id="ativCount">0</div>
+        </div>
+
+        <!-- Botão único para iniciar atividade -->
+        <button class="btn-iniciar-ativ" onclick="abrirCardAtividade()">
+          ＋ Iniciar atividade
+        </button>
+
+        <!-- Card de seleção + formulário (oculto inicialmente) -->
+        <div class="ativ-card" id="ativCard" style="display:none">
+          <div class="ativ-card-header">
+            Selecione a atividade
+            <button class="ativ-card-fechar" onclick="fecharCardAtividade()">✕</button>
+          </div>
+          <div class="tipos-grid" id="tiposGrid"></div>
+          <!-- Formulário padrão (quantidade + obs + foto) -->
+          <div class="ativ-form-card" id="ativFormPadrao">
+            <div class="campo-row">
+              <div class="campo"><label>Quantidade</label><input type="number" id="ativQtd" inputmode="numeric" min="1" placeholder="opcional"></div>
+              <div class="campo" id="campoLote" style="display:none"><label>Lote (opcional)</label><select id="ativLote"><option value="">—</option></select></div>
+            </div>
+            <div class="campo" style="margin-bottom:8px"><label>Observação</label><input type="text" id="ativObs" placeholder="opcional"></div>
+            <button class="btn-camera" id="btnCamAtiv" onclick="document.getElementById('inputCamAtiv').click()">📷 Foto (opcional)</button>
+            <div id="fotoAtivPrev"></div>
+            <button class="btn-salvar" onclick="salvarAtividade()">Registrar</button>
+          </div>
+          <!-- Ações especiais (regar/irrigar) -->
+          <div class="ativ-acao-especial" id="ativAcaoEspecial" style="display:none">
+            <button class="btn-acao-mapa regar" id="btnRegarMapa" onclick="irParaRega()">
+              🪣 Selecionar lotes no mapa
+            </button>
+            <button class="btn-acao-mapa irrigar" id="btnIrrigAuto" style="display:none" onclick="irParaIrrigAuto()">
+              💧 Ligar irrigação automática
+            </button>
+            <button class="btn-acao-mapa" id="btnChuva" style="background:var(--azc);color:var(--az)" onclick="registrarChuva()">
+              🌧️ Registrar chuva
+            </button>
+            <!-- Painel semeadura -->
+            <div id="painelSemeadura" style="display:none">
+              <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:8px">Sementes por unidade</div>
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px" id="sementesBtns">
+                <button onclick="selSementes('1',this)" style="padding:10px 4px;border-radius:8px;border:1.5px solid var(--czl);background:var(--ar);font-family:'DM Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;color:var(--cz)">1</button>
+                <button onclick="selSementes('2',this)" style="padding:10px 4px;border-radius:8px;border:1.5px solid var(--czl);background:var(--ar);font-family:'DM Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;color:var(--cz)">2</button>
+                <button onclick="selSementes('3',this)" style="padding:10px 4px;border-radius:8px;border:1.5px solid var(--czl);background:var(--ar);font-family:'DM Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;color:var(--cz)">3</button>
+                <button onclick="selSementes('4',this)" style="padding:10px 4px;border-radius:8px;border:1.5px solid var(--czl);background:var(--ar);font-family:'DM Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;color:var(--cz)">4</button>
+                <button onclick="selSementes('5+',this)" style="padding:10px 4px;border-radius:8px;border:1.5px solid var(--czl);background:var(--ar);font-family:'DM Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;color:var(--cz)">5+</button>
+              </div>
+              <div style="font-size:11px;color:var(--cz);margin-bottom:10px;line-height:1.4">Para bandejas/sementeiras não é necessário selecionar.</div>
+              <button class="btn-acao-mapa" style="background:var(--vp);color:var(--v3);border:1px solid var(--v4)" onclick="irParaSemeadura()">
+                🌱 Selecionar lote no mapa
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ativ-lista" id="ativLista"></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <a class="nav-i on" href="app_ponto.html"><span class="nav-ico">📋</span><span class="nav-lbl">Ponto</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_mapa.html')"><span class="nav-ico">🗺️</span><span class="nav-lbl">Mapa</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_lotes.html')"><span class="nav-ico">🌱</span><span class="nav-lbl">Lotes</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_especies.html')"><span class="nav-ico">🌿</span><span class="nav-lbl">Espécies</span></a>
+    <a class="nav-i" id="navRel" href="#" onclick="navegar('app_relatorio.html')" style="display:none"><span class="nav-ico">📊</span><span class="nav-lbl">Relatório</span></a>
+    <a class="nav-i" id="navGes" href="#" onclick="navegar('app_gestor.html')" style="display:none"><span class="nav-ico">🎯</span><span class="nav-lbl">Gestão</span></a>
+  </div>
+</div>
+
+<div class="modal-ov" id="modalPerfil" onclick="if(event.target===this)this.classList.remove('vis')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="perfilConteudo"></div>
+  </div>
+</div>
+
+<!-- TELA TRAVADA: SAQUINHOS -->
+<div class="tela-travada" id="telaSaquinhos" style="display:none">
+  <div class="tt-ico">🪣</div>
+  <div class="tt-titulo">Enchendo saquinhos</div>
+  <div class="tt-sub">Conclua antes de sair desta tela</div>
+  <div class="tt-timer" id="saqTimer">00:00:00</div>
+  <div class="tt-meta" id="saqMeta">Meta: 1 saquinho a cada 2 min</div>
+  <div class="campo">
+    <label>Quantos saquinhos você encheu?</label>
+    <input type="number" id="saqQtd" inputmode="numeric" min="1" placeholder="0">
+  </div>
+  <div class="campo">
+    <label>Observação (opcional)</label>
+    <input type="text" id="saqObs" placeholder="ex: terra muito úmida">
+  </div>
+  <button class="tt-btn cancel" onclick="document.getElementById('inputCamSaq').click()">📷 Foto (opcional)</button>
+  <div id="saqFotoPrev" style="margin-bottom:10px"></div>
+  <button class="tt-btn ok" onclick="finalizarSaquinhos()">✓ Finalizar e registrar</button>
+</div>
+
+<!-- TELA TRAVADA: IRRIGAÇÃO AUTOMÁTICA -->
+<div class="tela-travada" id="telaIrrigacao" style="display:none">
+  <div class="tt-ico">💧</div>
+  <div class="tt-titulo" id="irrigTitulo">Irrigação automática</div>
+  <div class="tt-sub">Fique próximo ao sistema de irrigação</div>
+  <div class="tt-timer" id="irrigTimer">00:00</div>
+  <div class="tt-prog"><div class="tt-prog-bar ok" id="irrigProgBar" style="width:0%"></div></div>
+  <div class="tt-meta" id="irrigMeta">Mínimo: 15 minutos</div>
+  <div id="irrigAlerta" class="tt-alerta" style="display:none"></div>
+  <button class="tt-btn ok" id="irrigBtnFim" onclick="finalizarIrrigacao()">
+    ✓ Desligar e confirmar
+  </button>
+  <button class="tt-btn cancel" onclick="cancelarIrrigacao()">Cancelar — não liguei</button>
+</div>
+
+<input type="file" id="inputCamSaq" accept="image/*" capture="environment" style="display:none">
+<div class="toast" id="toast"></div>
+<input type="file" id="inputCamPonto" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="inputCamAtiv"  accept="image/*" capture="environment" style="display:none">
+
+<script>
+const APP = {
+  usuario:  null,
+  tipoSel:  null,
+  atividades: [],
+  fotoPonto:  null,
+  fotoAtiv:   null,
+  _sementesPorUnidade: null,
+};
+
+const TIPOS = [
+  {tipo:'irrigacao',     ico:'💧', lbl:'Regar',      especial:true},
+  {tipo:'tubetes',       ico:'🔲', lbl:'Tubetes'},
+  {tipo:'saquinhos',     ico:'🪣', lbl:'Sacos'},
+  {tipo:'semeadura',     ico:'🌱', lbl:'Semeadura'},
+  {tipo:'repicagem',     ico:'🔁', lbl:'Repicagem'},
+  {tipo:'ronda',         ico:'👁️', lbl:'Ronda'},
+  {tipo:'fitossanitario',ico:'🧪', lbl:'Fitossanit.'},
+  {tipo:'expedicao',     ico:'📦', lbl:'Expedição'},
+  {tipo:'encher_bandeja',ico:'🔲', lbl:'Encher bandeja'},
+  {tipo:'outro',         ico:'➕', lbl:'Outro'},
+];
+// Remover 'germinacao' — é acompanhamento, não atividade
+const TIPO_ICO = Object.fromEntries(TIPOS.map(t=>[t.tipo,t.ico]));
+const NIVEL_NOME = {1:'Iniciante',2:'Operacional',3:'Técnico',4:'Gestor campo',5:'Gestor principal'};
+
+// ── INIT ────────────────────────────────────────────────────
+(async function init(){
+  try{
+    const r = await api('api_auth.php',{acao:'verificar'});
+    if(!r.ok){window.location.href='app_login.html';return;}
+    APP.usuario = r.dados.usuario;
+    localStorage.setItem('vf_usuario',JSON.stringify(APP.usuario));
+  }catch(e){
+    const u = localStorage.getItem('vf_usuario');
+    if(!u){window.location.href='app_login.html';return;}
+    APP.usuario = JSON.parse(u);
+  }
+
+  const u = APP.usuario;
+  document.getElementById('sbAvatar').textContent = u.avatar_emoji||'🌱';
+  document.getElementById('sbNome').textContent   = u.apelido||u.nome;
+  document.getElementById('sbNivel').textContent  = `Nível ${u.nivel} · ${NIVEL_NOME[u.nivel]||''}`;
+  document.getElementById('dataHoje').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  atualizarHora(); setInterval(atualizarHora,30000);
+
+  const nivel = parseInt(u.nivel);
+  if(nivel>=4){
+    document.getElementById('navRel').style.display='flex';
+    document.getElementById('navGes').style.display='flex';
+  }
+  // Câmera obrigatória APENAS para níveis 1-3
+  _renderTiposGrid();
+  await carregarPonto();
+
+  // Retoma irrigação em andamento se o app foi fechado durante
+  const irrigPendente = localStorage.getItem('vf_irrig_inicio');
+  if(irrigPendente){
+    const inicio = parseInt(irrigPendente);
+    if(!isNaN(inicio) && Date.now() - inicio < 3600000){ // máx 1h
+      _iniciarTelaIrrigacao(inicio);
+    } else {
+      localStorage.removeItem('vf_irrig_inicio');
+    }
+  }
+
+  await carregarLotesSelect();
+})();
+
+function atualizarHora(){
+  document.getElementById('sbHora').textContent =
+    new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ── CÂMERA ──────────────────────────────────────────────────
+let _tipoRegistro = null;
+
+document.getElementById('inputCamPonto').addEventListener('change', async function(){
+  const file = this.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    APP.fotoPonto = e.target.result;
+    const mini = document.getElementById('fotoPontoMini');
+    mini.src = e.target.result; mini.style.display = 'block';
+    // Registra automaticamente após foto
+    const tipo = _tipoRegistro; _tipoRegistro = null;
+    try{
+      const r = await api('api_ponto.php',{acao:tipo, foto_base64:APP.fotoPonto});
+      if(!r.ok) throw new Error(r.erro);
+      toast(tipo==='entrada'?'✓ Entrada registrada!':'✓ Saída registrada!');
+      APP.fotoPonto = null;
+      mini.style.display = 'none';
+      await carregarPonto();
+    }catch(e){ toast(e.message); }
+  };
+  reader.readAsDataURL(file); this.value='';
+});
+
+document.getElementById('inputCamAtiv').addEventListener('change',function(){
+  const file=this.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    APP.fotoAtiv=e.target.result;
+    document.getElementById('btnCamAtiv').className='btn-camera com-foto';
+    document.getElementById('btnCamAtiv').textContent='✓ Foto capturada';
+    document.getElementById('fotoAtivPrev').innerHTML=
+      `<img src="${e.target.result}" style="width:100%;height:60px;object-fit:cover;border-radius:7px;margin-bottom:6px">`;
+  };
+  r.readAsDataURL(file); this.value='';
+});
+
+// ── PONTO ───────────────────────────────────────────────────
+async function carregarPonto(){
+  try{
+    const r = await api('api_ponto.php',{acao:'hoje'});
+    if(!r.ok){ _estadoSemPonto(); return; }
+    _renderPonto(r.dados);
+    document.getElementById('scoreNum').textContent = r.dados.score_hoje||0;
+    if(r.dados.tem_entrada_aberta) await carregarAtividades();
+  }catch(e){ _estadoSemPonto(); }
+}
+
+function _estadoSemPonto(){
+  document.getElementById('pontoDot').className     = 'ponto-dot fora';
+  document.getElementById('pontoTexto').textContent = 'Ainda não registrado hoje';
+  document.getElementById('pontoHora').textContent  = '';
+  document.getElementById('btnEntrada').disabled    = false;
+  document.getElementById('btnSaida').disabled      = true;
+  document.getElementById('bloqueioAtiv').style.display = '';
+  document.getElementById('areaAtiv').style.display     = 'none';
+  if(_contadorTimer){ clearInterval(_contadorTimer); _contadorTimer=null; }
+}
+
+let _contadorTimer = null;
+
+function _renderPonto(dados){
+  const ponto   = dados.ponto;
+  const aberta  = dados.tem_entrada_aberta;
+  const totalSeg= dados.total_segundos || 0;
+  const dot     = document.getElementById('pontoDot');
+  const texto   = document.getElementById('pontoTexto');
+  const hora    = document.getElementById('pontoHora');
+  const ent     = document.getElementById('btnEntrada');
+  const sai     = document.getElementById('btnSaida');
+
+  if(_contadorTimer){ clearInterval(_contadorTimer); _contadorTimer=null; }
+
+  if(!ponto || !ponto.entrada){ _estadoSemPonto(); return; }
+
+  if(aberta){
+    dot.className     = 'ponto-dot dentro';
+    texto.textContent = 'Presente no viveiro';
+    ent.disabled = true; sai.disabled = false;
+
+    const entradaMs = new Date(ponto.entrada).getTime();
+    function atualizarContador(){
+      const seg = Math.floor(totalSeg + (Date.now() - entradaMs)/1000);
+      const h   = Math.floor(seg/3600);
+      const m   = Math.floor((seg%3600)/60);
+      const s   = seg%60;
+      hora.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} no viveiro hoje`;
+    }
+    atualizarContador();
+    _contadorTimer = setInterval(atualizarContador, 1000);
+
+    document.getElementById('bloqueioAtiv').style.display = 'none';
+    document.getElementById('areaAtiv').style.display     = 'block';
+  } else {
+    dot.className = 'ponto-dot fora';
+    const nReg = dados.registros_dia || 1;
+    texto.textContent = nReg > 1 ? `${nReg} entrada(s) hoje — saída registrada` : 'Saída registrada';
+    const h = Math.floor(totalSeg/3600);
+    const m = Math.floor((totalSeg%3600)/60);
+    hora.textContent = `Total: ${String(h).padStart(2,'0')}h${String(m).padStart(2,'0')}m`;
+    ent.disabled = false; sai.disabled = true;
+
+    document.getElementById('bloqueioAtiv').style.display = '';
+    document.getElementById('areaAtiv').style.display     = 'none';
+  }
+}
+
+async function registrarPonto(tipo){
+  _tipoRegistro = tipo;
+  document.getElementById('inputCamPonto').click();
+}
+
+// ── CARD DE ATIVIDADE ────────────────────────────────────────
+function _renderTiposGrid(){
+  document.getElementById('tiposGrid').innerHTML = TIPOS.map(t=>
+    `<button class="tipo-btn" data-tipo="${t.tipo}" onclick="selecionarTipo('${t.tipo}',this)">
+      <span class="tipo-ico">${t.ico}</span>
+      <span class="tipo-lbl">${t.lbl}</span>
+    </button>`
+  ).join('');
+}
+
+function abrirCardAtividade(){
+  APP.tipoSel = null; APP.fotoAtiv = null;
+  document.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('ativFormPadrao').classList.remove('vis');
+  document.getElementById('ativAcaoEspecial').style.display = 'none';
+  document.getElementById('ativCard').style.display = '';
+  // Limpa campos
+  const ids = ['ativQtd','ativObs'];
+  ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('fotoAtivPrev').innerHTML='';
+  document.getElementById('btnCamAtiv').className='btn-camera';
+  document.getElementById('btnCamAtiv').textContent='📷 Foto (opcional)';
+}
+
+function fecharCardAtividade(){
+  document.getElementById('ativCard').style.display = 'none';
+  APP.tipoSel = null;
+}
+
+function selecionarTipo(tipo, el){
+  document.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  APP.tipoSel = tipo;
+
+  const nivel = parseInt(APP.usuario.nivel);
+
+  if(tipo === 'saquinhos'){
+    fecharCardAtividade();
+    abrirTelaSaquinhos();
+    return;
+  }
+
+  if(tipo === 'semeadura'){
+    // Semeadura vai ao mapa para selecionar lote vazio
+    document.getElementById('ativAcaoEspecial').style.display = 'none';
+    document.getElementById('ativFormPadrao').classList.remove('vis');
+    // Mostra painel especial de semeadura
+    document.getElementById('ativAcaoEspecial').style.display = '';
+    document.getElementById('btnIrrigAuto').style.display = 'none';
+    document.getElementById('btnRegarMapa').style.display = 'none';
+    document.getElementById('btnChuva').style.display = 'none';
+    document.getElementById('painelSemeadura').style.display = '';
+    return;
+  }
+
+  // Ao sair de semeadura, esconde painel
+  document.getElementById('painelSemeadura').style.display = 'none';
+  document.getElementById('btnRegarMapa').style.display = '';
+  document.getElementById('btnChuva').style.display = '';
+
+  if(tipo === 'irrigacao'){
+    document.getElementById('ativFormPadrao').classList.remove('vis');
+    document.getElementById('ativAcaoEspecial').style.display = '';
+    document.getElementById('btnIrrigAuto').style.display = nivel>=2 ? '' : 'none';
+    return;
+  }
+
+  // Atividade normal
+  document.getElementById('ativAcaoEspecial').style.display = 'none';
+  document.getElementById('ativFormPadrao').classList.add('vis');
+  const comLote = ['semeadura','repicagem','ronda','fitossanitario','expedicao'];
+  document.getElementById('campoLote').style.display = comLote.includes(tipo)?'':'none';
+  document.getElementById('ativQtd').placeholder =
+    tipo==='tubetes'?'ex: 96 (1 bandeja)':'opcional';
+}
+
+// Verifica se está no horário de alerta solar (9h10 às 15h10)
+// ── SEMEADURA ─────────────────────────────────────────────────
+function selSementes(val, el){
+  APP._sementesPorUnidade = val;
+  document.querySelectorAll('#sementesBtns button').forEach(b=>{
+    b.style.borderColor='var(--czl)'; b.style.background='var(--ar)'; b.style.color='var(--cz)';
+  });
+  el.style.borderColor='var(--v4)'; el.style.background='var(--vp)'; el.style.color='var(--v3)';
+}
+
+async function irParaSemeadura(){
+  // Registra atividade de semeadura primeiro
+  try{
+    await api('api_atividades.php',{
+      acao:'registrar', tipo:'semeadura',
+      descricao: APP._sementesPorUnidade ? `${APP._sementesPorUnidade} semente(s)/unidade` : 'Bandeja/sementeira',
+      quantidade: APP._sementesPorUnidade && APP._sementesPorUnidade!=='5+' ? parseInt(APP._sementesPorUnidade) : null,
+    });
+  }catch(e){}
+  // Vai ao mapa para selecionar lote vazio
+  window.location.href = 'app_mapa.html?modo=semear&sementes=' + (APP._sementesPorUnidade||'bandeja');
+}
+
+// ── HORÁRIO SOLAR ────────────────────────────────────────────
+function _horarioSol(){
+  const min = new Date().getHours()*60 + new Date().getMinutes();
+  return min >= (9*60+10) && min <= (15*60+10);
+}
+
+// ── REGA MANUAL ──────────────────────────────────────────────
+async function irParaRega(){
+  const nivel = parseInt(APP.usuario.nivel);
+  if(_horarioSol() && nivel <= 2){
+    toast('🚫 Nível 1-2 não pode regar entre 9h10 e 15h10');
+    return;
+  }
+  if(_horarioSol() && nivel >= 3){
+    const ok = confirm(
+      '⚠️ Horário de sol intenso (9h10–15h10)\n\n' +
+      'Molhe apenas o solo, nunca as folhas.\n\n' +
+      'Você se responsabiliza por continuar?'
+    );
+    if(!ok) return;
+  }
+  try{ await api('api_atividades.php',{acao:'registrar',tipo:'irrigacao',descricao:'Rega manual'}); }catch(e){}
+  window.location.href = 'app_mapa.html?modo=regar';
+}
+
+// ── IRRIGAÇÃO AUTOMÁTICA — tela travada com cronômetro ───────
+let _irrigTimer = null;
+let _irrigInicio = null;
+
+async function irParaIrrigAuto(){
+  const nivel = parseInt(APP.usuario.nivel);
+  if(_horarioSol() && nivel <= 2){
+    toast('🚫 Nível 1-2 não pode ligar irrigação entre 9h10 e 15h10');
+    return;
+  }
+  if(_horarioSol() && nivel >= 3){
+    const ok = confirm(
+      '⚠️ Horário de sol intenso (9h10–15h10)\n\n' +
+      'Irrigar agora pode queimar as folhas. Molhe apenas o solo.\n\n' +
+      'Você se responsabiliza por continuar?'
+    );
+    if(!ok) return;
+  }
+  _iniciarTelaIrrigacao(Date.now());
+}
+
+function _iniciarTelaIrrigacao(inicio){
+  _irrigInicio = inicio;
+  localStorage.setItem('vf_irrig_inicio', inicio);
+  document.getElementById('telaIrrigacao').style.display = 'flex';
+  document.getElementById('irrigProgBar').style.width = '0%';
+  document.getElementById('irrigProgBar').className = 'tt-prog-bar alerta';
+  document.getElementById('irrigMeta').textContent = 'Mínimo recomendado: 15 minutos';
+  document.getElementById('irrigAlerta').style.display = 'none';
+  if(_irrigTimer) clearInterval(_irrigTimer);
+  _irrigTimer = setInterval(_tickIrrigacao, 1000);
+  _tickIrrigacao(); // atualiza imediatamente
+}
+
+function _tickIrrigacao(){
+  if(!_irrigInicio) return;
+  const seg = Math.floor((Date.now() - _irrigInicio) / 1000);
+  const m   = Math.floor(seg / 60);
+  const s   = seg % 60;
+  const pct = Math.min((seg / 900) * 100, 100);
+  document.getElementById('irrigTimer').textContent =
+    `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const bar = document.getElementById('irrigProgBar');
+  bar.style.width = pct + '%';
+  if(seg >= 900){
+    bar.className = 'tt-prog-bar ok';
+    document.getElementById('irrigMeta').textContent = '✓ Mínimo atingido — pode encerrar quando quiser';
+  }
+}
+
+async function finalizarIrrigacao(){
+  if(!_irrigInicio){ toast('Erro: início não registrado'); return; }
+  const seg = Math.floor((Date.now() - _irrigInicio) / 1000);
+  const min = Math.floor(seg / 60);
+  const s   = seg % 60;
+  if(seg < 900){
+    const ok = confirm(
+      `⚠️ Irrigação com apenas ${min}min ${s}s\n\n` +
+      'O mínimo recomendado é 15 minutos.\n\n' +
+      'Confirma encerrar mesmo assim?'
+    );
+    if(!ok) return;
+  }
+  clearInterval(_irrigTimer); _irrigTimer = null;
+  localStorage.removeItem('vf_irrig_inicio');
+  document.getElementById('telaIrrigacao').style.display = 'none';
+  try{
+    await api('api_atividades.php',{
+      acao:'registrar', tipo:'irrigacao',
+      descricao:`Irrigação automática — ${min}min${seg<900?' (abaixo do mínimo)':''}`,
+      quantidade: min,
+    });
+    const r = await api('api_irrigacao.php',{acao:'ligar_irrigacao'});
+    if(!r.ok) throw new Error(r.erro);
+    toast(`✓ ${r.dados.mensagem} — ${min}min irrigados`);
+    fecharCardAtividade();
+    await carregarAtividades();
+  }catch(e){ toast(e.message); }
+}
+
+function cancelarIrrigacao(){
+  clearInterval(_irrigTimer); _irrigTimer = null;
+  localStorage.removeItem('vf_irrig_inicio');
+  _irrigInicio = null;
+  document.getElementById('telaIrrigacao').style.display = 'none';
+  toast('Irrigação cancelada');
+}
+
+// ── SAQUINHOS — tela travada com cronômetro ──────────────────
+let _saqTimer  = null;
+let _saqInicio = null;
+let _saqFoto   = null;
+
+function abrirTelaSaquinhos(){
+  _saqInicio = Date.now(); _saqFoto = null;
+  document.getElementById('saqQtd').value = '';
+  document.getElementById('saqObs').value = '';
+  document.getElementById('saqFotoPrev').innerHTML = '';
+  document.getElementById('saqMeta').textContent = 'Meta: 1 saquinho a cada 2 min';
+  document.getElementById('telaSaquinhos').style.display = 'flex';
+  _saqTimer = setInterval(_tickSaquinhos, 1000);
+}
+
+function _tickSaquinhos(){
+  const seg = Math.floor((Date.now() - _saqInicio) / 1000);
+  const h = Math.floor(seg/3600);
+  const m = Math.floor((seg%3600)/60);
+  const s = seg%60;
+  document.getElementById('saqTimer').textContent =
+    `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const qtd = parseInt(document.getElementById('saqQtd').value)||0;
+  if(qtd > 0 && seg > 0){
+    const taxa = (seg/60/qtd).toFixed(1);
+    const avalia = taxa <= 2 ? '✓ Boa taxa' : taxa <= 3 ? '⚡ Abaixo da meta' : '⚠️ Muito abaixo';
+    document.getElementById('saqMeta').textContent = `${taxa} min/saquinho — ${avalia}`;
+  }
+}
+
+document.getElementById('inputCamSaq').addEventListener('change', function(){
+  const file = this.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    _saqFoto = e.target.result;
+    document.getElementById('saqFotoPrev').innerHTML =
+      `<img src="${e.target.result}" style="width:80px;height:60px;object-fit:cover;border-radius:8px;border:2px solid rgba(76,175,112,.4)">`;
+  };
+  r.readAsDataURL(file); this.value='';
+});
+
+async function finalizarSaquinhos(){
+  const qtd = parseInt(document.getElementById('saqQtd').value)||0;
+  if(!qtd){ toast('Informe quantos saquinhos você encheu'); return; }
+  const seg  = Math.floor((Date.now() - _saqInicio) / 1000);
+  const min  = Math.floor(seg/60);
+  const taxa = seg > 0 ? (seg/60/qtd).toFixed(1) : '?';
+  clearInterval(_saqTimer); _saqTimer = null;
+  document.getElementById('telaSaquinhos').style.display = 'none';
+  try{
+    const r = await api('api_atividades.php',{
+      acao:'registrar', tipo:'saquinhos', quantidade: qtd,
+      descricao:`${min}min — ${taxa} min/saquinho${document.getElementById('saqObs').value?' — '+document.getElementById('saqObs').value:''}`,
+      foto_base64: _saqFoto||null,
+    });
+    if(!r.ok) throw new Error(r.erro);
+    toast(`✓ ${qtd} saquinhos em ${min}min (${taxa} min/un) +${r.dados.score}pts`);
+    await carregarAtividades();
+  }catch(e){
+    document.getElementById('telaSaquinhos').style.display = 'flex';
+    _saqTimer = setInterval(_tickSaquinhos, 1000);
+    toast(e.message);
+  }
+}
+
+// ── CHUVA ────────────────────────────────────────────────────
+async function registrarChuva(){
+  const ok = confirm(
+    '🌧️ Registrar chuva\n\n' +
+    'Você garante que choveu o suficiente para dispensar a irrigação de hoje?\n\n' +
+    'Isso registrará todos os lotes do viveiro como molhados.'
+  );
+  if(!ok) return;
+  try{
+    await api('api_atividades.php',{acao:'registrar',tipo:'irrigacao',descricao:'Chuva natural'});
+    const r = await api('api_irrigacao.php',{acao:'registrar_chuva'});
+    if(!r.ok) throw new Error(r.erro);
+    toast(`🌧️ ${r.dados.mensagem}`);
+    fecharCardAtividade();
+    await carregarAtividades();
+  }catch(e){ toast(e.message); }
+}
+
+
+
+// ── SALVAR ATIVIDADE NORMAL ──────────────────────────────────
+async function salvarAtividade(){
+  const tipo = APP.tipoSel;
+  if(!tipo){ toast('Selecione um tipo'); return; }
+  const qtd    = parseInt(document.getElementById('ativQtd').value)||null;
+  const obs    = document.getElementById('ativObs').value.trim()||null;
+  const lote_id= document.getElementById('ativLote').value||null;
+  if(['tubetes','saquinhos'].includes(tipo)&&!qtd){ toast('Informe a quantidade'); return; }
+
+  const dados = {acao:'registrar',tipo,quantidade:qtd,descricao:obs,foto_base64:APP.fotoAtiv||null};
+  if(lote_id) dados.lote_id=parseInt(lote_id);
+
+  try{
+    const r = await api('api_atividades.php',dados);
+    if(!r.ok) throw new Error(r.erro);
+    toast(`✓ Registrado! +${r.dados.score} pts`);
+    fecharCardAtividade();
+    APP.fotoAtiv = null;
+    await carregarAtividades();
+  }catch(e){ toast(e.message); }
+}
+
+// ── LISTA DE ATIVIDADES ──────────────────────────────────────
+async function carregarAtividades(){
+  try{
+    const r = await api('api_atividades.php',{acao:'minhas',data:_hoje()});
+    if(!r.ok) return;
+    APP.atividades = r.dados.atividades||[];
+    document.getElementById('scoreNum').textContent = r.dados.score_hoje||0;
+    document.getElementById('ativCount').textContent = APP.atividades.length;
+  }catch(e){}
+
+  // Carrega urgências e tarefas em paralelo (não bloqueia se falhar)
+  const [urgencias, tarefas] = await Promise.all([
+    api('api_irrigacao.php',{acao:'carregar_zonas'}).then(r=>r.ok?r.dados.urgencias:{}).catch(()=>({})),
+    api('api_prioridades.php',{acao:'listar_tarefas',status:'pendente'}).then(r=>r.ok?r.dados.tarefas:[]).catch(()=>[]),
+  ]);
+
+  _renderLista(urgencias, tarefas);
+}
+
+function _renderLista(urgencias={}, tarefas=[]){
+  const lista = document.getElementById('ativLista');
+  let html = '';
+
+  // ── Urgências hídricas (🔥🔥)
+  const urgentes = Object.entries(urgencias)
+    .filter(([,u])=>u.nivel==='urgente')
+    .slice(0,5);
+  if(urgentes.length){
+    html += `<div style="background:var(--alc);border-radius:10px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--al)">
+      <div style="font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--al);margin-bottom:5px">🔥🔥 Urgente — sem água</div>
+      ${urgentes.map(([lid,u])=>`<div style="font-size:12px;color:var(--al);margin-bottom:3px">
+        Lote ${lid} — ${u.horas_atras!=null?u.horas_atras+'h sem molhar':'nunca regado'}
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // ── Atenção hídrica (🔥)
+  const atencao = Object.entries(urgencias)
+    .filter(([,u])=>u.nivel==='atencao')
+    .slice(0,3);
+  if(atencao.length){
+    html += `<div style="background:var(--amc);border-radius:10px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--am)">
+      <div style="font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--am);margin-bottom:5px">🔥 Atenção — verificar água</div>
+      ${atencao.map(([lid,u])=>`<div style="font-size:12px;color:var(--am);margin-bottom:3px">
+        Lote ${lid} — ${u.horas_atras!=null?u.horas_atras+'h sem molhar':'nunca regado'}
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // ── Tarefas do gestor
+  if(tarefas.length){
+    const prioColor = {urgente:'var(--al)',alta:'var(--am)',normal:'var(--v3)',baixa:'var(--cz)'};
+    const prioBg    = {urgente:'var(--alc)',alta:'var(--amc)',normal:'var(--vp)',baixa:'var(--ar)'};
+    html += tarefas.map(t=>`
+      <div style="background:${prioBg[t.prioridade]||'var(--ar)'};border-radius:10px;padding:10px 12px;margin-bottom:6px;border-left:3px solid ${prioColor[t.prioridade]||'var(--czl)'}">
+        <div style="font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:${prioColor[t.prioridade]||'var(--cz)'};margin-bottom:3px">📋 Tarefa${t.prioridade==='urgente'?' urgente':''}</div>
+        <div style="font-size:13px;font-weight:500;color:var(--pr)">${t.titulo}</div>
+        ${t.data_limite?`<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-top:3px">Até ${new Date(t.data_limite).toLocaleDateString('pt-BR')}</div>`:''}
+      </div>`).join('');
+  }
+
+  // ── Atividades feitas
+  if(!APP.atividades.length){
+    html += '<div style="text-align:center;padding:16px;color:var(--cz);font-family:\'DM Mono\',monospace;font-size:11px">Nenhuma atividade ainda hoje.</div>';
+  } else {
+    html += APP.atividades.map(a=>{
+      const score = (parseInt(a.score_base)||0)+(parseInt(a.score_ajuste)||0);
+      const hora  = a.criado_em?a.criado_em.slice(11,16):'';
+      const lote  = a.lote_codigo?` · <span style="font-family:'DM Mono',monospace;font-size:9px">${a.lote_codigo}</span>`:'';
+      const nota  = a.nota_gestor?`<div class="ativ-nota">${'★'.repeat(a.nota_gestor)}${'☆'.repeat(6-a.nota_gestor)} avaliada</div>`:'';
+      return `<div class="ativ-item">
+        <div class="ativ-ico">${TIPO_ICO[a.tipo]||'➕'}</div>
+        <div class="ativ-info">
+          <div class="ativ-tipo">${_nomeTipo(a.tipo)}${lote}</div>
+          ${a.descricao?`<div class="ativ-desc">${a.descricao}</div>`:''}
+          <div class="ativ-meta">${hora}${a.quantidade?' · '+a.quantidade+' un.':''}</div>
+          ${nota}
+        </div>
+        <div class="ativ-score">+${score}</div>
+      </div>`;
+    }).join('');
+  }
+
+  lista.innerHTML = html;
+}
+
+function _nomeTipo(tipo){ return TIPOS.find(t=>t.tipo===tipo)?.lbl||tipo; }
+
+async function carregarLotesSelect(){
+  try{
+    const r = await api('api_lotes.php',{acao:'listar'});
+    if(!r.ok) return;
+    document.getElementById('ativLote').innerHTML =
+      '<option value="">— sem lote —</option>'+
+      (r.dados.lotes||[]).map(l=>`<option value="${l.id}">${l.nome_exibicao||l.codigo}</option>`).join('');
+  }catch(e){}
+}
+
+// ── PERFIL ───────────────────────────────────────────────────
+function abrirPerfil(){
+  const u = APP.usuario;
+  document.getElementById('perfilConteudo').innerHTML=`
+    <div style="text-align:center;padding:14px 0 10px">
+      <div style="font-size:44px;margin-bottom:8px">${u.avatar_emoji||'🌱'}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2)">${u.apelido||u.nome}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--cz);margin-top:3px">Nível ${u.nivel} · ${NIVEL_NOME[u.nivel]||''}</div>
+    </div>
+    <div style="background:var(--ar);border-radius:12px;padding:14px">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:10px">Trocar PIN</div>
+      <div style="margin-bottom:8px"><label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">PIN atual</label><input type="password" id="pinAtual" inputmode="numeric" maxlength="6" placeholder="••••••" style="width:100%;background:var(--br);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;outline:none"></div>
+      <div style="margin-bottom:8px"><label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Novo PIN (6 dígitos)</label><input type="password" id="pinNovo" inputmode="numeric" maxlength="6" placeholder="••••••" style="width:100%;background:var(--br);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;outline:none"></div>
+      <div style="margin-bottom:10px"><label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Confirmar</label><input type="password" id="pinConf" inputmode="numeric" maxlength="6" placeholder="••••••" style="width:100%;background:var(--br);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;outline:none"></div>
+      <button onclick="trocarPin()" style="width:100%;padding:12px;background:var(--v2);color:var(--vg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">Salvar PIN</button>
+    </div>`;
+  document.getElementById('modalPerfil').classList.add('vis');
+}
+
+async function trocarPin(){
+  const a=document.getElementById('pinAtual')?.value?.trim();
+  const n=document.getElementById('pinNovo')?.value?.trim();
+  const c=document.getElementById('pinConf')?.value?.trim();
+  if(!a||!n||!c){toast('Preencha todos os campos');return;}
+  if(n.length!==6||!/^\d+$/.test(n)){toast('PIN deve ter 6 dígitos');return;}
+  if(n!==c){toast('PINs não coincidem');return;}
+  try{
+    const r=await api('api_auth.php',{acao:'trocar_pin',pin_atual:a,pin_novo:n});
+    if(!r.ok)throw new Error(r.erro);
+    toast('✓ PIN alterado');
+    document.getElementById('modalPerfil').classList.remove('vis');
+  }catch(e){toast(e.message);}
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+function _hoje(){ return new Date().toISOString().slice(0,10); }
+
+async function navegar(destino){
+  try{
+    const r = await api('api_ponto.php',{acao:'hoje'});
+    if(r.ok && r.dados.tem_entrada_aberta){
+      window.location.href = destino;
+    } else {
+      toast('🔒 Registre o ponto primeiro');
+    }
+  }catch(e){ toast('🔒 Registre o ponto primeiro'); }
+}
+
+async function api(arq,dados){
+  const token=localStorage.getItem('vf_token');
+  const r=await fetch(`../api/${arq}`,{
+    method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},
+    body:JSON.stringify(dados),
+  });
+  if(r.status===401){window.location.href='app_login.html';throw new Error('401');}
+  return r.json();
+}
+
+function logout(){
+  api('api_auth.php',{acao:'logout'}).catch(()=>{});
+  localStorage.clear();
+  window.location.href='app_login.html';
+}
+
+let _tt;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('vis');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('vis'),2800);
+}
+</script>
+</body>
+</html>

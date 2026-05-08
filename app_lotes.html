@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<!--
+  app_lotes.html  (v5)
+  CORRIGIDO: nome_exibicao substitui nome_popular (fix 'undefined')
+  CORRIGIDO: menu inferior correto em todas as telas
+  NOVO: câmera opcional em visitas e registros de perda
+  Versão: 5.0 · Mai/2026
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3d2b">
+<title>Florescer · Lotes</title>
+<link rel="manifest" href="../manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v2:#1a3d2b;--v3:#2d6b45;--v4:#4caf70;--v5:#86d4a0;
+  --vg:#c8ecd4;--vp:#e8f5ec;--am:#c87c2a;--amc:#fef3e6;
+  --al:#b03020;--alc:#fdecea;--az:#2a5080;--azc:#e8f0fa;
+  --br:#fdfcf8;--ar:#f4f0e8;--ck:#e8e2d8;--pr:#1a1f1c;
+  --cz:#5a6860;--czl:#c8d8cc;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--ar);color:var(--pr);overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;background:var(--ar);}
+.statusbar{background:var(--v2);padding:12px 16px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sb-left{display:flex;align-items:center;gap:8px;}
+.sb-avatar{width:26px;height:26px;border-radius:50%;background:rgba(76,175,112,.3);display:flex;align-items:center;justify-content:center;font-size:13px;}
+.sb-user{font-family:'DM Mono',monospace;font-size:11px;color:var(--vg);}
+.sb-nivel{font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);}
+.sb-right{display:flex;align-items:center;gap:8px;}
+.sb-hora{font-family:'DM Mono',monospace;font-size:12px;color:rgba(200,236,212,.5);}
+.sb-sair{background:rgba(176,48,32,.25);border:1px solid rgba(176,48,32,.4);border-radius:6px;padding:3px 8px;font-family:'DM Mono',monospace;font-size:9px;color:#ffb0a0;cursor:pointer;}
+.tophead{background:var(--v2);padding:0 16px 14px;flex-shrink:0;}
+.tophead h1{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--vg);}
+.tophead-sub{font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,236,212,.4);letter-spacing:.1em;text-transform:uppercase;margin-top:3px;}
+.kpi-row{background:var(--v2);padding:0 14px 12px;display:flex;gap:7px;flex-shrink:0;}
+.kpi{flex:1;background:rgba(255,255,255,.07);border-radius:9px;padding:7px 8px;text-align:center;}
+.kpi-num{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v4);line-height:1;}
+.kpi-lbl{font-family:'DM Mono',monospace;font-size:7px;color:rgba(200,236,212,.4);letter-spacing:.06em;margin-top:1px;}
+.kpi.vazio .kpi-num{color:rgba(180,180,180,.7);}
+.kpi.urgente .kpi-num{color:#ff7a6a;}
+.kpi.atencao .kpi-num{color:var(--am);}
+.filtro-bar{display:flex;gap:5px;padding:8px 14px;background:var(--v2);border-top:1px solid rgba(255,255,255,.05);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.filtro-bar::-webkit-scrollbar{display:none;}
+.ftag{font-family:'DM Mono',monospace;font-size:9px;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.1);color:rgba(200,236,212,.5);cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.ftag.on{background:rgba(76,175,112,.2);border-color:var(--v4);color:var(--v5);}
+.ftag.on.vazios{background:rgba(180,180,180,.15);border-color:rgba(180,180,180,.4);color:rgba(220,220,220,.8);}
+.ftag.on.urgente{background:rgba(176,48,32,.25);border-color:var(--al);color:#ffb0a0;}
+.content{flex:1;overflow-y:auto;scrollbar-width:none;padding:8px 14px 80px;}
+.content::-webkit-scrollbar{display:none;}
+.bottom-nav{background:var(--br);border-top:1px solid var(--czl);display:flex;padding:6px 0 20px;flex-shrink:0;}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px;text-decoration:none;}
+.nav-ico{font-size:20px;line-height:1;}
+.nav-lbl{font-size:9px;color:var(--cz);font-family:'DM Mono',monospace;letter-spacing:.04em;}
+.nav-i.on .nav-lbl{color:var(--v3);}
+.lote-card{background:var(--br);border-radius:12px;border:1px solid var(--czl);margin-bottom:7px;cursor:pointer;overflow:hidden;transition:box-shadow .15s;}
+.lote-card:active{box-shadow:0 4px 16px rgba(0,0,0,.1);}
+.lote-card-inner{display:flex;}
+.lote-barra{width:4px;flex-shrink:0;}
+.st-vazio .lote-barra{background:rgba(180,180,180,.5);}
+.st-ativo .lote-barra{background:var(--v4);}
+.st-urgente .lote-barra{background:var(--al);animation:pb 1.5s infinite;}
+.st-agua .lote-barra{background:var(--az);}
+.st-pronto .lote-barra{background:var(--am);}
+.st-rust .lote-barra{background:#d4a030;}
+@keyframes pb{0%,100%{opacity:1}50%{opacity:.3}}
+.lote-body{flex:1;padding:10px 12px 8px;}
+.lote-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px;}
+.lote-esp{font-size:14px;font-weight:600;color:var(--pr);flex:1;line-height:1.2;}
+.lote-qtd{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--v3);line-height:1;text-align:right;}
+.lote-qtd-sub{font-family:'DM Mono',monospace;font-size:7px;color:var(--cz);text-align:right;}
+.lote-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.ltag{font-family:'DM Mono',monospace;font-size:8px;padding:2px 6px;border-radius:4px;}
+.ltag.verde{background:var(--vp);color:var(--v3);}
+.ltag.am{background:var(--amc);color:var(--am);}
+.ltag.az{background:var(--azc);color:var(--az);}
+.ltag.ck{background:var(--ck);color:var(--cz);}
+.ltag.vazio-tag{background:rgba(180,180,180,.15);color:rgba(100,100,100,.8);}
+.lote-origem{font-size:10px;color:var(--cz);padding:5px 12px 7px;border-top:1px solid var(--czl);}
+/* Foto prévia */
+.foto-preview{width:100%;height:80px;object-fit:cover;border-radius:7px;margin-top:6px;cursor:pointer;}
+/* Botão câmera */
+.btn-camera{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;cursor:pointer;font-size:12px;color:var(--cz);width:100%;margin-bottom:8px;}
+.btn-camera:active{background:var(--vp);}
+.btn-camera.com-foto{border-color:var(--v4);color:var(--v3);background:var(--vp);}
+.loading{text-align:center;padding:40px;color:var(--cz);font-family:'DM Mono',monospace;font-size:11px;}
+/* Modais */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:flex-end;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-ov.vis{opacity:1;pointer-events:all;}
+.modal-box{background:var(--br);border-radius:20px 20px 0 0;width:100%;max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);scrollbar-width:none;}
+.modal-box::-webkit-scrollbar{display:none;}
+.modal-ov.vis .modal-box{transform:translateY(0);}
+.modal-handle{width:36px;height:4px;background:var(--czl);border-radius:2px;margin:14px auto 0;}
+.modal-acao-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:flex-end;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .2s;}
+.modal-acao-ov.vis{opacity:1;pointer-events:all;}
+.modal-acao-box{background:var(--br);border-radius:20px 20px 0 0;width:100%;padding:14px 18px 36px;transform:translateY(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);max-height:88vh;overflow-y:auto;scrollbar-width:none;}
+.modal-acao-box::-webkit-scrollbar{display:none;}
+.modal-acao-ov.vis .modal-acao-box{transform:translateY(0);}
+.acao-titulo{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--v2);margin-bottom:12px;}
+.campo{margin-bottom:9px;}
+.campo label{display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px;}
+.campo input,.campo select,.campo textarea{width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--pr);outline:none;}
+.campo input:focus,.campo select:focus{border-color:var(--v3);}
+.campo textarea{resize:none;height:60px;}
+.btn-salvar{width:100%;padding:12px;background:var(--v2);color:var(--vg);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;}
+.btn-salvar:active{background:var(--v3);}
+.acao-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.btn-acao{padding:12px 8px;border-radius:12px;border:1.5px solid var(--czl);background:var(--ar);cursor:pointer;text-align:center;transition:all .15s;}
+.btn-acao:active{transform:scale(.96);}
+.btn-acao.primario{background:var(--v2);border-color:var(--v3);}
+.btn-acao.plantar{background:#fff8e6;border-color:var(--am);}
+.btn-acao.bloqueado{opacity:.4;cursor:not-allowed;}
+.btn-acao-ico{font-size:20px;display:block;margin-bottom:3px;}
+.btn-acao-lbl{font-size:11px;font-weight:500;color:var(--pr);}
+.btn-acao.primario .btn-acao-lbl{color:var(--vg);}
+.btn-acao.plantar .btn-acao-lbl{color:var(--am);}
+.modal-tabs{display:flex;border-bottom:1px solid var(--czl);padding:0 18px;margin-top:10px;overflow-x:auto;scrollbar-width:none;}
+.modal-tabs::-webkit-scrollbar{display:none;}
+.mtab{font-family:'DM Mono',monospace;font-size:10px;padding:8px 0;margin-right:16px;color:var(--cz);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;}
+.mtab.on{color:var(--v3);border-bottom-color:var(--v3);}
+.modal-content{padding:12px 18px 32px;}
+.tab-panel{display:none;}
+.tab-panel.vis{display:block;}
+.estado-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.estado-btn{padding:12px 8px;border-radius:10px;border:1.5px solid var(--czl);background:var(--ar);cursor:pointer;text-align:center;transition:all .15s;}
+.estado-btn.sel.muito_bem{background:var(--vp);border-color:var(--v4);}
+.estado-btn.sel.atencao{background:var(--amc);border-color:var(--am);}
+.estado-btn.sel.problema{background:var(--alc);border-color:var(--al);}
+.estado-btn.sel.ok{background:var(--ar);border-color:var(--cz);}
+.estado-ico{font-size:22px;display:block;margin-bottom:4px;}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--v2);border:1px solid rgba(76,175,112,.2);border-radius:24px;padding:8px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--vg);z-index:200;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:90vw;}
+.toast.vis{transform:translateX(-50%) translateY(0);}
+/* Foto de lote no modal */
+.lote-foto{width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-bottom:10px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="statusbar">
+    <div class="sb-left">
+      <div class="sb-avatar" id="sbAvatar">🌱</div>
+      <div>
+        <div class="sb-user" id="sbNome">--</div>
+        <div class="sb-nivel" id="sbNivel">Nível --</div>
+      </div>
+    </div>
+    <div class="sb-right">
+      <div class="sb-hora" id="sbHora">--:--</div>
+      <div class="sb-sair" onclick="logout()">Sair</div>
+    </div>
+  </div>
+  <div class="tophead">
+    <h1>Lotes</h1>
+    <div class="tophead-sub" id="subtitulo">Carregando...</div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-num" id="kpiTotal">—</div><div class="kpi-lbl">Ativos</div></div>
+    <div class="kpi vazio"><div class="kpi-num" id="kpiVazios">—</div><div class="kpi-lbl">Vazios</div></div>
+    <div class="kpi urgente"><div class="kpi-num" id="kpiUrgentes">—</div><div class="kpi-lbl">Urgentes</div></div>
+    <div class="kpi atencao"><div class="kpi-num" id="kpiAtencao">—</div><div class="kpi-lbl">Atenção</div></div>
+  </div>
+  <div class="filtro-bar">
+    <div class="ftag on"       onclick="filtrar(this,'','')">Todos</div>
+    <div class="ftag vazios"   onclick="filtrar(this,'vazio','vazio')">⬜ Vazios</div>
+    <div class="ftag urgente"  onclick="filtrar(this,'urgente','')">🔴 Urgente</div>
+    <div class="ftag"          onclick="filtrar(this,'aguardando_agua','')">💧 Água</div>
+    <div class="ftag"          onclick="filtrar(this,'pronto','')">📦 Pronto</div>
+    <div class="ftag"          onclick="filtrar(this,'rustificando','')">☀️ Rust.</div>
+    <div class="ftag"          onclick="filtrar(this,'ativo','')">🌿 Ativos</div>
+  </div>
+  <div class="content" id="conteudo"><div class="loading">Carregando lotes...</div></div>
+  <div class="bottom-nav">
+    <a class="nav-i" href="app_ponto.html"><span class="nav-ico">📋</span><span class="nav-lbl">Ponto</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_mapa.html')"><span class="nav-ico">🗺️</span><span class="nav-lbl">Mapa</span></a>
+    <a class="nav-i on" href="app_lotes.html"><span class="nav-ico">🌱</span><span class="nav-lbl">Lotes</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_especies.html')"><span class="nav-ico">🌿</span><span class="nav-lbl">Espécies</span></a>
+    <a class="nav-i" id="navRel" href="#" onclick="navegar('app_relatorio.html')" style="display:none"><span class="nav-ico">📊</span><span class="nav-lbl">Relatório</span></a>
+    <a class="nav-i" id="navGes" href="#" onclick="navegar('app_gestor.html')" style="display:none"><span class="nav-ico">🎯</span><span class="nav-lbl">Gestão</span></a>
+  </div>
+</div>
+
+<!-- MODAL DETALHE LOTE -->
+<div class="modal-ov" id="modalLote" onclick="fecharModal('modalLote',event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="modalLoteConteudo"></div>
+  </div>
+</div>
+
+<!-- MODAL AÇÃO -->
+<!-- FAB criar -->
+<button id="fabCriar" onclick="abrirMenuCriar()"
+  style="position:fixed;bottom:80px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--v3);border:none;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;z-index:30;color:white">＋</button>
+
+<div class="modal-acao-ov" id="modalAcao" onclick="fecharModal('modalAcao',event)">
+  <div class="modal-acao-box" onclick="event.stopPropagation()" id="modalAcaoBox"></div>
+</div>
+
+<input type="file" id="inputCamTaxa" accept="image/*" capture="environment" style="display:none">
+<div class="toast" id="toast"></div>
+<!-- Input câmera oculto -->
+<input type="file" id="inputCamera" accept="image/*" capture="environment" style="display:none">
+
+<script>
+const APP={usuario:null,lotes:[],filtroStatus:'',filtroTipo:'',loteAtual:null,estadoVisita:null,visitaAtual:null,especies:[],fotoAtual:null,_taxaFoto:null};
+
+// Handler câmera taxa
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('inputCamTaxa')?.addEventListener('change',function(){
+    const file=this.files[0]; if(!file)return;
+    const r=new FileReader();
+    r.onload=e=>{
+      APP._taxaFoto=e.target.result;
+      const btn=document.getElementById('btnFotoTaxa');
+      if(btn){btn.textContent='✓ Foto tirada';btn.style.borderStyle='solid';btn.style.borderColor='var(--v4)';}
+      const prev=document.getElementById('fotoTaxaPrev');
+      if(prev) prev.innerHTML=`<img src="${e.target.result}" style="width:100%;height:60px;object-fit:cover;border-radius:7px;margin-top:6px">`;
+    };
+    r.readAsDataURL(file); this.value='';
+  });
+});
+
+const FASES_LABEL={vazio:'Vazio',semeadura:'Semeadura',germinacao:'Germinação',crescimento_tubete:'Crescim. tubete',crescimento_saco:'Crescim. saco',rustificacao:'Rustificação',expedicao:'Expedição'};
+const STATUS_LBL={vazio:'Vazio',ativo:'Ativo',urgente:'Urgente',aguardando_agua:'Sem água',pronto:'Pronto',rustificando:'Rustificando',expedido:'Expedido'};
+const nomesNivel={1:'Iniciante',2:'Operacional',3:'Técnico',4:'Gestor',5:'Gestor'};
+
+(async function init(){
+  try{
+    const r=await api('api_auth.php',{acao:'verificar'});
+    if(!r.ok){window.location.href='app_login.html';return;}
+    APP.usuario=r.dados.usuario;
+    localStorage.setItem('vf_usuario',JSON.stringify(APP.usuario));
+  }catch(e){
+    const u=localStorage.getItem('vf_usuario');
+    if(!u){window.location.href='app_login.html';return;}
+    APP.usuario=JSON.parse(u);
+  }
+  document.getElementById('sbAvatar').textContent=APP.usuario.avatar_emoji||'🌱';
+  document.getElementById('sbNome').textContent=APP.usuario.apelido||APP.usuario.nome;
+  document.getElementById('sbNivel').textContent=`Nível ${APP.usuario.nivel} · ${nomesNivel[APP.usuario.nivel]||''}`;
+  atualizarHora(); setInterval(atualizarHora,30000);
+  const nivel=parseInt(APP.usuario.nivel);
+  if(nivel>=4){document.getElementById('navRel').style.display='flex';document.getElementById('navGes').style.display='flex';}
+  await Promise.all([carregarDashboard(),carregarLotes(),carregarEspecies()]);
+  const params=new URLSearchParams(location.search);
+  if(params.get('lote_id')) abrirLote(parseInt(params.get('lote_id')));
+})();
+
+function atualizarHora(){document.getElementById('sbHora').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+
+async function carregarDashboard(){
+  try{const r=await api('api_lotes.php',{acao:'dashboard'});
+    if(!r.ok)return;
+    document.getElementById('kpiTotal').textContent=r.dados.total_lotes_ativos||'0';
+    document.getElementById('kpiVazios').textContent=r.dados.lotes_vazios||'0';
+    document.getElementById('kpiUrgentes').textContent=r.dados.urgentes||'0';
+    document.getElementById('kpiAtencao').textContent=r.dados.em_atencao||'0';
+  }catch(e){}
+}
+
+async function carregarEspecies(){
+  try{const r=await api('api_especies.php',{acao:'listar_especies'});
+    if(r.ok) APP.especies=r.dados.especies||[];
+  }catch(e){}
+}
+
+async function carregarLotes(){
+  try{
+    const body={acao:'listar'};
+    if(APP.filtroStatus) body.status=APP.filtroStatus;
+    if(APP.filtroTipo)   body.tipo_lote=APP.filtroTipo;
+    const r=await api('api_lotes.php',body);
+    if(!r.ok) throw new Error(r.erro);
+    APP.lotes=r.dados.lotes;
+    document.getElementById('subtitulo').textContent=`${APP.lotes.length} lote${APP.lotes.length!==1?'s':''} encontrado${APP.lotes.length!==1?'s':''}`;
+    renderLotes();
+  }catch(e){document.getElementById('conteudo').innerHTML=`<div class="loading">Erro: ${e.message}</div>`;}
+}
+
+function filtrar(el,status,tipo){
+  document.querySelectorAll('.ftag').forEach(f=>f.classList.remove('on'));
+  el.classList.add('on');
+  APP.filtroStatus=status==='vazio'?'':status;
+  APP.filtroTipo=tipo;
+  carregarLotes();
+}
+
+function renderLotes(){
+  if(!APP.lotes.length){document.getElementById('conteudo').innerHTML='<div class="loading">Nenhum lote encontrado.</div>';return;}
+  document.getElementById('conteudo').innerHTML=APP.lotes.map(l=>{
+    const isVazio=l.tipo_lote==='vazio';
+    // FIX: usa nome_exibicao retornado pela API (COALESCE no SQL)
+    const nome=l.nome_exibicao||(isVazio?'Saquinho Novo':l.codigo);
+    const stCss=`st-${l.status==='aguardando_agua'?'agua':l.status==='rustificando'?'rust':l.status}`;
+    const tags=[
+      isVazio?`<span class="ltag vazio-tag">Pronto p/ plantar</span>`:`<span class="ltag ck">${FASES_LABEL[l.fase_atual]||l.fase_atual}</span>`,
+      l.embalagem_atual==='tubete'?`<span class="ltag az">🔲 Tubete</span>`:`<span class="ltag az">🪣 Saco</span>`,
+      l.taxa_germinacao?`<span class="ltag verde">🌱 ${l.taxa_germinacao}%</span>`:'',
+      l.dias_rustificando?`<span class="ltag am">☀️ ${l.dias_rustificando}d`:'',
+      l.acoes_pendentes>0?`<span class="ltag am">📋 ${l.acoes_pendentes}</span>`:'',
+    ].filter(Boolean).join('');
+    const origemHtml=isVazio&&l.enchido_por_nome
+      ?`<div class="lote-origem">🔗 ${l.enchido_por_nome}${l.nome_exibicao?.includes('Reuso')&&l.especie_nome?' · era '+l.especie_nome:''}</div>`:''
+    const alertaHtml=l.alertas?.length
+      ?`<div style="padding:5px 12px 7px;font-size:11px;color:var(--al);display:flex;align-items:center;gap:5px;border-top:1px solid var(--czl)">⚠️ ${l.alertas[0].msg}</div>`:''
+    return `<div class="lote-card ${stCss}" onclick="abrirLote(${l.id})">
+      <div class="lote-card-inner">
+        <div class="lote-barra"></div>
+        <div class="lote-body">
+          <div class="lote-top">
+            <div style="flex:1">
+              ${isVazio?'<div style="font-family:DM Mono,monospace;font-size:8px;color:var(--cz);margin-bottom:2px">EMBALAGEM VAZIA</div>':''}
+              <div class="lote-esp">${nome}</div>
+            </div>
+            <div>
+              <div class="lote-qtd">${l.qtd_atual}</div>
+              <div class="lote-qtd-sub">unidades</div>
+            </div>
+          </div>
+          <div class="lote-tags">${tags}</div>
+        </div>
+      </div>
+      ${origemHtml}${alertaHtml}
+    </div>`;
+  }).join('');
+}
+
+// ── CÂMERA ──────────────────────────────────────────────────
+let _cameraCallback=null;
+function abrirCamera(callback){
+  _cameraCallback=callback;
+  document.getElementById('inputCamera').click();
+}
+document.getElementById('inputCamera').addEventListener('change',function(e){
+  const file=e.target.files[0];
+  if(!file||!_cameraCallback)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{_cameraCallback(ev.target.result);};
+  reader.readAsDataURL(file);
+  this.value='';
+});
+
+// ── MODAL DETALHE ────────────────────────────────────────────
+async function abrirLote(id){
+  document.getElementById('modalLote').classList.add('vis');
+  document.getElementById('modalLoteConteudo').innerHTML='<div class="loading" style="padding:40px">Carregando...</div>';
+  try{
+    const [rDetalhe, rTaxa] = await Promise.all([
+      api('api_lotes.php',{acao:'detalhe',id}),
+      api('api_lotes.php',{acao:'historico_taxa',lote_id:id}).catch(()=>({ok:false})),
+    ]);
+    if(!rDetalhe.ok) throw new Error(rDetalhe.erro);
+    APP.loteAtual=rDetalhe.dados;
+    APP.taxaData = rTaxa.ok ? rTaxa.dados : null;
+    renderModalLote(rDetalhe.dados);
+    const params=new URLSearchParams(location.search);
+    if(params.get('aba')==='visitas') setTimeout(()=>{const t=document.querySelector('.mtab:nth-child(1)');if(t)mudarTab('visitas',t);},100);
+  }catch(e){document.getElementById('modalLoteConteudo').innerHTML=`<div class="loading">Erro: ${e.message}</div>`;}
+}
+
+function renderModalLote({lote:l,historico,germinacao,visitas,alertas,permissoes}){
+  const isVazio=l.tipo_lote==='vazio';
+  // FIX: usa nome_exibicao
+  const nome=l.nome_exibicao||(isVazio?'Saquinho Novo':l.codigo);
+  const nivel=parseInt(APP.usuario.nivel);
+  const alertasHtml=alertas.map(a=>`<div style="background:var(--${a.tipo}c);color:var(--${a.tipo});border-radius:7px;padding:6px 10px;font-size:11px;margin-bottom:4px">⚠️ ${a.msg}</div>`).join('');
+  const origemHtml=isVazio&&(l.enchido_por_nome||l.lote_origem_codigo)
+    ?`<div style="font-size:11px;color:var(--cz);margin-top:4px">🔗 ${l.enchido_por_nome?'Enchido por '+l.enchido_por_nome:''} ${l.lote_origem_codigo?' · origem '+l.lote_origem_codigo:''} ${l.especie_origem_nome?' ('+l.especie_origem_nome+')':''}</div>`:''
+
+  // Foto recente do lote (se existir)
+  const fotoHtml=l.foto_recente
+    ?`<img class="lote-foto" src="../../${l.foto_recente}" onclick="window.open('../../${l.foto_recente}','_blank')">`:'';
+
+  let botoesHtml='';
+  const emTaxa = ['germinacao','adaptacao'].includes(l.fase_atual);
+  const emCrescendo = ['crescimento_tubete','crescimento_saco'].includes(l.fase_atual);
+  const emRust = l.fase_atual === 'rustificacao';
+  const isBandeja = l.embalagem_atual === 'bandeja';
+  if(isVazio){
+    const isSementeira = l.embalagem_atual === 'sementeira';
+    botoesHtml=`<div class="acao-grid">
+      ${permissoes.associar_especie
+        ?`<div class="btn-acao plantar" onclick="abrirAssociarEspecie(${l.id},${l.qtd_atual})"><span class="btn-acao-ico">🌿</span><div class="btn-acao-lbl">Plantar espécie</div></div>`
+        :`<div class="btn-acao bloqueado"><span class="btn-acao-ico">🌿</span><div class="btn-acao-lbl">Plantar (nível 3+)</div></div>`}
+      <div class="btn-acao" onclick="abrirVisita(${l.id})"><span class="btn-acao-ico">👁️</span><div class="btn-acao-lbl">Registrar visita</div></div>
+      ${isSementeira && nivel>=4
+        ?`<div class="btn-acao" onclick="encerrarSementeira(${l.id})"><span class="btn-acao-ico">🏁</span><div class="btn-acao-lbl">Encerrar sementeira</div></div>`:''}
+      ${l.embalagem_atual==='bandeja'
+        ?`<div class="btn-acao" onclick="finalizarBandeja(${l.id})"><span class="btn-acao-ico">♻️</span><div class="btn-acao-lbl">Finalizar bandeja</div></div>`:''}
+    </div>`;
+  } else if(emTaxa){
+    botoesHtml=`<div class="acao-grid">
+      <div class="btn-acao primario" onclick="abrirRegistrarTaxa(${l.id},'${l.fase_atual}')">
+        <span class="btn-acao-ico">📊</span><div class="btn-acao-lbl" style="color:var(--vg)">Registrar hoje</div></div>
+      <div class="btn-acao" onclick="abrirVisita(${l.id})"><span class="btn-acao-ico">👁️</span><div class="btn-acao-lbl">Registrar visita</div></div>
+      <div class="btn-acao ${nivel>=4?'':'bloqueado'}" ${nivel>=4?`onclick="abrirFecharTaxa(${l.id})"`:''}>
+        <span class="btn-acao-ico">✅</span><div class="btn-acao-lbl">Declarar crescendo</div></div>
+    </div>`;
+  } else if(emCrescendo){
+    botoesHtml=`<div class="acao-grid">
+      <div class="btn-acao primario" onclick="abrirIniciarAtividade(${l.id})"><span class="btn-acao-ico">⚡</span><div class="btn-acao-lbl" style="color:var(--vg)">Iniciar atividade</div></div>
+      <div class="btn-acao" onclick="abrirVisita(${l.id})"><span class="btn-acao-ico">👁️</span><div class="btn-acao-lbl">Registrar visita</div></div>
+      <div class="btn-acao ${nivel>=4?'':'bloqueado'}" ${nivel>=4?`onclick="abrirIniciarRust(${l.id})"`:''}>
+        <span class="btn-acao-ico">☀️</span><div class="btn-acao-lbl">Iniciar rustificação</div></div>
+      <div class="btn-acao ${nivel>=4?'':'bloqueado'}" ${nivel>=4?`onclick="abrirTesteAB(${l.id})"`:''}>
+        <span class="btn-acao-ico">🔬</span><div class="btn-acao-lbl">Teste A/B</div></div>
+    </div>`;
+  } else if(emRust){
+    botoesHtml=`<div class="acao-grid">
+      <div class="btn-acao" onclick="abrirVisita(${l.id})"><span class="btn-acao-ico">👁️</span><div class="btn-acao-lbl">Registrar visita</div></div>
+      <div class="btn-acao primario ${permissoes.expedicao!=='livre'?'bloqueado':''}" ${permissoes.expedicao==='livre'?`onclick="abrirAcao('expedicao',${l.id})"`:''}>
+        <span class="btn-acao-ico">📦</span><div class="btn-acao-lbl">Expedir</div></div>
+    </div>`;
+  } else {
+    // Fase semeadura ou outras — botão depende da fase exata
+    const emSemeadura = l.fase_atual === 'semeadura';
+    botoesHtml=`<div class="acao-grid">
+      <div class="btn-acao primario" onclick="abrirIniciarAtividade(${l.id})"><span class="btn-acao-ico">⚡</span><div class="btn-acao-lbl" style="color:var(--vg)">Iniciar atividade</div></div>
+      <div class="btn-acao" onclick="abrirVisita(${l.id})"><span class="btn-acao-ico">👁️</span><div class="btn-acao-lbl">Registrar visita</div></div>
+      ${emSemeadura
+        ? `<div class="btn-acao ${nivel>=4?'':'bloqueado'}" ${nivel>=4?`onclick="abrirIniciarTaxa(${l.id},'germinacao')"`:''}>
+            <span class="btn-acao-ico">🌱</span><div class="btn-acao-lbl">Iniciar germinação</div></div>
+           <div class="btn-acao ${nivel>=4?'':'bloqueado'}" ${nivel>=4?`onclick="abrirIniciarTaxa(${l.id},'adaptacao')"`:''}>
+            <span class="btn-acao-ico">🔁</span><div class="btn-acao-lbl">Iniciar adaptação</div></div>`
+        : ''}
+    </div>`;
+  }
+
+  const ESTADO_LBL={ok:'✓ Ok',atencao:'⚠️ Atenção',muito_bem:'✓ Ok',problema:'⚠️ Atenção'};
+  const visitasHtml=visitas.length
+    ?visitas.map(v=>`
+      <div style="background:var(--ar);border-radius:9px;padding:9px 11px;margin-bottom:6px;border-left:3px solid ${v.estado_geral==='atencao'||v.estado_geral==='problema'?'var(--al)':'var(--v4)'}">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-bottom:3px">${new Date(v.criado_em).toLocaleDateString('pt-BR')} · ${v.registrado_por_nome}</div>
+        <div style="font-size:12px;font-weight:500">${ESTADO_LBL[v.estado_geral]||v.estado_geral}</div>
+        ${v.observacao?`<div style="font-size:11px;color:var(--cz);margin-top:3px">${v.observacao}</div>`:''}
+        ${v.foto?`<img src="../../${v.foto}" style="width:100%;max-height:120px;object-fit:cover;border-radius:7px;margin-top:5px">`:''}
+        <div style="font-family:'DM Mono',monospace;font-size:9px;margin-top:4px;${v.checado_por?'color:var(--v3)':'color:var(--am)'}">
+          ${v.checado_por?'✓ Gestor checou':'⏳ Aguardando check do gestor'}
+        </div>
+        ${!v.checado_por&&nivel>=4?`
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button onclick="checarVisitaSimples(${v.id},'ok')" style="flex:1;padding:6px;background:var(--vp);color:var(--v3);border:1px solid var(--v4);border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">✓ Está ok</button>
+            <button onclick="checarVisitaSimples(${v.id},'atencao')" style="flex:1;padding:6px;background:var(--alc);color:var(--al);border:1px solid var(--al);border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">⚠️ Precisa de atenção</button>
+          </div>`:''}
+      </div>`).join('')
+    :'<div class="loading" style="padding:10px 0">Nenhuma visita.</div>';
+
+
+  const histHtml=historico.length
+    ?historico.map(h=>`<div style="padding:6px 0;border-bottom:1px solid var(--czl);font-size:12px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz)">${new Date(h.criado_em).toLocaleDateString('pt-BR')} · ${h.usuario_nome}</div>
+        <div>${FASES_LABEL[h.fase_anterior]||h.fase_anterior||'início'} → ${FASES_LABEL[h.fase_nova]||h.fase_nova}</div>
+        ${h.motivo?`<div style="font-size:10px;color:var(--cz)">${h.motivo}</div>`:''}
+      </div>`).join('')
+    :'<div class="loading" style="padding:10px 0">Sem histórico.</div>';
+
+  const germHtml = !isVazio && l.fase_atual === 'germinacao' ? `
+    ${germinacao.length?`<div style="font-size:12px;color:var(--cz);margin-bottom:8px">Total germinadas: <strong style="color:var(--v3)">${germinacao[0].total_germinadas}</strong> · Perdidas: <strong style="color:var(--al)">${germinacao[0].total_perdidas}</strong></div>`:''}
+    <div style="background:var(--ar);border-radius:10px;padding:11px;">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-bottom:8px;text-transform:uppercase;letter-spacing:.1em">Registrar hoje</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="campo"><label>Germinadas</label><input type="number" id="germHoje" min="0" inputmode="numeric" placeholder="0"></div>
+        <div class="campo"><label>Perdidas</label><input type="number" id="perdHoje" min="0" inputmode="numeric" placeholder="0"></div>
+      </div>
+      <button class="btn-salvar" onclick="salvarGerminacao(${l.id})">Salvar</button>
+    </div>` : null;
+
+  const mostrarGerm = germHtml !== null;
+
+  document.getElementById('modalLoteConteudo').innerHTML=`
+    <div style="padding:12px 18px 0">
+      ${fotoHtml}
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-bottom:3px">${STATUS_LBL[l.status]||l.status}${l.corredor?' · Corredor '+l.corredor+', L'+l.grade_linha+' C'+l.grade_col:''}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--v2);line-height:1.1">${nome}</div>
+      ${origemHtml}
+      ${l.nome_cientifico?`<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);font-style:italic;margin-top:2px">${l.nome_cientifico}</div>`:''}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:10px 0 0">
+        <div style="background:var(--ar);border-radius:8px;padding:7px;text-align:center">
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--v3)">${l.qtd_atual}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:7px;color:var(--cz)">UNIDADES</div>
+        </div>
+        <div style="background:var(--ar);border-radius:8px;padding:7px;text-align:center">
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--al)">${l.qtd_perdida}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:7px;color:var(--cz)">PERDAS</div>
+        </div>
+        <div style="background:var(--ar);border-radius:8px;padding:7px;text-align:center">
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--am)">${l.taxa_germinacao?l.taxa_germinacao+'%':'—'}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:7px;color:var(--cz)">GERM.</div>
+        </div>
+      </div>
+      ${alertasHtml?`<div style="margin-top:8px">${alertasHtml}</div>`:''}
+    </div>
+    <div style="padding:10px 18px 6px">${botoesHtml}</div>
+    <div class="modal-tabs">
+      <div class="mtab on" onclick="mudarTab('visitas',this)">Visitas${visitas.filter(v=>!v.checado_por).length>0?' 🔴':''}</div>
+      ${mostrarGerm?`<div class="mtab" onclick="mudarTab('germinacao',this)">Germinação</div>`:''}
+      <div class="mtab" onclick="mudarTab('historico',this)">Histórico</div>
+      <div class="mtab" onclick="mudarTab('grafico',this)">📈 Gráfico</div>
+    </div>
+    <div class="modal-content">
+      <div class="tab-panel vis" id="tab-visitas">${visitasHtml}</div>
+      ${mostrarGerm?`<div class="tab-panel" id="tab-germinacao">${germHtml}</div>`:''}
+      <div class="tab-panel" id="tab-historico">${histHtml}</div>
+      <div class="tab-panel" id="tab-grafico">${_renderGrafico(l, APP.taxaData)}</div>
+    </div>`;
+}
+
+function mudarTab(id,el){
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('vis'));
+  el.classList.add('on');
+  document.getElementById('tab-'+id)?.classList.add('vis');
+}
+
+// ── ASSOCIAR ESPÉCIE ─────────────────────────────────────────
+function abrirAssociarEspecie(loteId,qtdMax){
+  const opcoes=APP.especies.map(e=>`<option value="${e.id}">${e.nome_popular}</option>`).join('');
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="acao-titulo">🌿 Plantar espécie</div>
+    <div class="campo"><label>Espécie *</label><select id="assocEsp"><option value="">— selecione —</option>${opcoes}</select></div>
+    <div class="campo"><label>Quantidade (máx ${qtdMax})</label><input type="number" id="assocQtd" min="1" max="${qtdMax}" value="${qtdMax}" inputmode="numeric"></div>
+    <div class="campo"><label>Sementes por unidade</label><input type="number" id="assocSem" min="1" value="1" inputmode="numeric"></div>
+    <div class="campo"><label>Data de semeadura</label><input type="date" id="assocData" value="${new Date().toISOString().slice(0,10)}"></div>
+    <button class="btn-salvar" onclick="confirmarAssociar(${loteId})">Confirmar plantio</button>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+async function confirmarAssociar(loteId){
+  const especie_id=parseInt(document.getElementById('assocEsp')?.value)||0;
+  const quantidade=parseInt(document.getElementById('assocQtd')?.value)||0;
+  const sementes=parseInt(document.getElementById('assocSem')?.value)||1;
+  const data=document.getElementById('assocData')?.value;
+  if(!especie_id){toast('Selecione a espécie');return;}
+  if(!quantidade){toast('Informe a quantidade');return;}
+  try{
+    const r=await api('api_lotes.php',{acao:'associar_especie',lote_id:loteId,especie_id,quantidade,sementes_por_unidade:sementes,data_semeadura:data});
+    if(!r.ok) throw new Error(r.erro);
+    toast(`✓ ${r.dados.mensagem}`);
+    fecharModal('modalAcao',{target:document.getElementById('modalAcao')});
+    fecharModal('modalLote',{target:document.getElementById('modalLote')});
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+// ── VISITA COM CÂMERA ────────────────────────────────────────
+function abrirVisita(loteId){
+  APP.estadoVisita=null; APP.visitaAtual=null; APP.fotoAtual=null;
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="acao-titulo">Registrar visita</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:8px">Como está o lote?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div class="estado-btn" data-estado="ok" onclick="selecionarEstado(this)" style="text-align:center;padding:16px 8px;border-radius:10px;border:1.5px solid var(--czl);background:var(--ar);cursor:pointer">
+        <div style="font-size:28px;margin-bottom:4px">✓</div>
+        <div style="font-size:12px;font-weight:600;color:var(--v3)">Está ok</div>
+      </div>
+      <div class="estado-btn" data-estado="problema" onclick="selecionarEstado(this)" style="text-align:center;padding:16px 8px;border-radius:10px;border:1.5px solid var(--czl);background:var(--ar);cursor:pointer">
+        <div style="font-size:28px;margin-bottom:4px">⚠️</div>
+        <div style="font-size:12px;font-weight:600;color:var(--al)">Tem problema</div>
+      </div>
+    </div>
+    <div class="campo"><label>O que você observou? (opcional)</label><textarea id="visitaObs" placeholder="Descreva o que está vendo..." style="height:60px;resize:none;width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:8px 10px;font-size:13px"></textarea></div>
+    <button class="btn-camera" id="btnCameraVisita" onclick="tirarFotoVisita()">📷 Adicionar foto (opcional)</button>
+    <div id="fotoVisitaPreview"></div>
+    <button class="btn-salvar" id="btnSalvarVisita" onclick="salvarVisita(${loteId})" disabled>Confirmar visita</button>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+function tirarFotoVisita(){
+  abrirCamera(base64=>{
+    APP.fotoAtual=base64;
+    document.getElementById('btnCameraVisita').className='btn-camera com-foto';
+    document.getElementById('btnCameraVisita').textContent='✓ Foto capturada';
+    document.getElementById('fotoVisitaPreview').innerHTML=`<img class="foto-preview" src="${base64}" onclick="APP.fotoAtual=null;this.parentElement.innerHTML='';document.getElementById('btnCameraVisita').className='btn-camera';document.getElementById('btnCameraVisita').textContent='📷 Adicionar foto (opcional)'">`;
+  });
+}
+
+function selecionarEstado(btn){
+  document.querySelectorAll('.estado-btn').forEach(b=>{
+    b.style.borderColor='var(--czl)';
+    b.style.background='var(--ar)';
+  });
+  const isProblema = btn.dataset.estado==='problema';
+  btn.style.borderColor = isProblema ? 'var(--al)' : 'var(--v4)';
+  btn.style.background  = isProblema ? 'var(--alc)' : 'var(--vp)';
+  APP.estadoVisita=btn.dataset.estado;
+  document.getElementById('btnSalvarVisita').disabled=false;
+}
+
+async function salvarVisita(loteId){
+  if(!APP.estadoVisita){toast('Selecione o estado');return;}
+  const obs=document.getElementById('visitaObs')?.value?.trim()||null;
+  // problema = sugere atenção automaticamente
+  const sugere = APP.estadoVisita==='problema' ? 1 : 0;
+  try{
+    const r=await api('api_lotes.php',{acao:'registrar_visita',lote_id:loteId,estado_geral:APP.estadoVisita,observacao:obs,sugere_atencao:sugere,foto_base64:APP.fotoAtual});
+    if(!r.ok) throw new Error(r.erro);
+    APP.visitaAtual=r.dados.visita_id;
+    toast('✓ Visita registrada');
+    if(APP.estadoVisita==='problema'){
+      // Vai direto para o formulário completo de ações
+      _mostrarAcoesVisita(loteId,r.dados.visita_id);
+    }else{
+      fecharModal('modalAcao',{target:document.getElementById('modalAcao')});
+      fecharModal('modalLote',{target:document.getElementById('modalLote')});
+      await carregarLotes();
+    }
+  }catch(e){toast(e.message);}
+}
+
+function _mostrarAcoesVisita(loteId,visitaId){
+  const nivel=parseInt(APP.usuario.nivel);
+  const causas=['seca','excesso_agua','praga','fungo','raiz_dobrada','qualidade','desconhecido','outro'];
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="acao-titulo">O que aconteceu?</div>
+    <div style="background:var(--alc);border-radius:10px;padding:11px;margin-bottom:10px">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--al);margin-bottom:7px">Registrar perda</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="campo"><label>Quantidade</label><input type="number" id="perdaQtd" min="0" inputmode="numeric" placeholder="0"></div>
+        <div class="campo"><label>Causa</label><select id="perdaCausa"><option value="">—</option>${causas.map(c=>`<option value="${c}">${c.replace('_',' ')}</option>`).join('')}</select></div>
+      </div>
+      <button onclick="registrarAcaoVisita(${visitaId},${loteId},'perda')" style="width:100%;padding:9px;background:var(--al);color:white;border:none;border-radius:8px;font-size:12px;cursor:pointer">Registrar perda</button>
+    </div>
+    ${nivel>=3?`<div style="background:var(--amc);border-radius:10px;padding:11px;margin-bottom:10px">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--am);margin-bottom:7px">Gerar tarefa</div>
+      <div class="campo"><input type="text" id="tarefaTitulo" placeholder="Título da tarefa"></div>
+      <button onclick="registrarAcaoVisita(${visitaId},${loteId},'tarefa')" style="width:100%;padding:9px;background:var(--am);color:white;border:none;border-radius:8px;font-size:12px;cursor:pointer">Criar tarefa</button>
+    </div>`:''}
+    <div style="background:var(--vp);border-radius:10px;padding:11px;margin-bottom:10px">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--v3);margin-bottom:7px">Ação realizada agora</div>
+      <div class="campo"><input type="text" id="realizadaDesc" placeholder="O que você fez?"></div>
+      <button onclick="registrarAcaoVisita(${visitaId},${loteId},'realizada')" style="width:100%;padding:9px;background:var(--v3);color:white;border:none;border-radius:8px;font-size:12px;cursor:pointer">Registrar</button>
+    </div>
+    <button onclick="concluirVisita()" style="width:100%;padding:12px;background:var(--v2);color:var(--vg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">Concluir visita</button>`;
+}
+
+async function registrarAcaoVisita(visitaId,loteId,tipo){
+  let dados={acao:'registrar_acao_visita',visita_id:visitaId,lote_id:loteId,tipo_acao:tipo};
+  if(tipo==='perda'){const qtd=parseInt(document.getElementById('perdaQtd')?.value)||0;const causa=document.getElementById('perdaCausa')?.value;if(!qtd){toast('Informe a quantidade');return;}if(!causa){toast('Informe a causa');return;}dados={...dados,qtd_perdida:qtd,causa_perda:causa};}
+  else if(tipo==='tarefa'){const titulo=document.getElementById('tarefaTitulo')?.value?.trim();if(!titulo){toast('Informe o título');return;}dados={...dados,tarefa_titulo:titulo,tarefa_prioridade:'normal'};}
+  else if(tipo==='realizada'){const desc=document.getElementById('realizadaDesc')?.value?.trim();if(!desc){toast('Descreva o que foi feito');return;}dados={...dados,acao_descricao:desc};}
+  try{const r=await api('api_lotes.php',dados);if(!r.ok)throw new Error(r.erro);toast(`✓ ${tipo==='perda'?'Perda registrada':tipo==='tarefa'?'Tarefa criada':'Ação registrada'}`);}catch(e){toast(e.message);}
+}
+
+async function concluirVisita(){fecharModal('modalAcao',{target:document.getElementById('modalAcao')});fecharModal('modalLote',{target:document.getElementById('modalLote')});await carregarLotes();await carregarDashboard();}
+
+async function checarVisita(visitaId){
+  try{const r=await api('api_lotes.php',{acao:'checar_visita',visita_id:visitaId});if(!r.ok)throw new Error(r.erro);toast('✓ Visita checada');if(APP.loteAtual) await abrirLote(APP.loteAtual.lote.id);}catch(e){toast(e.message);}
+}
+
+async function salvarGerminacao(loteId){
+  const germ=parseInt(document.getElementById('germHoje')?.value)||0;const perd=parseInt(document.getElementById('perdHoje')?.value)||0;
+  if(!germ&&!perd){toast('Informe ao menos uma quantidade');return;}
+  try{const r=await api('api_lotes.php',{acao:'registrar_germinacao',lote_id:loteId,germinadas_hoje:germ,perdidas_hoje:perd});if(!r.ok)throw new Error(r.erro);toast(`✓ Germinação salva`);fecharModal('modalLote',{target:document.getElementById('modalLote')});await carregarLotes();}catch(e){toast(e.message);}
+}
+
+function abrirIniciarAtividade(loteId){
+  const atividades=[
+    {tipo:'irrigacao', ico:'💧', lbl:'Regar'},
+    {tipo:'fitossanitario', ico:'🧪', lbl:'Fitossanitário'},
+    {tipo:'repicagem', ico:'🔁', lbl:'Repicagem'},
+    {tipo:'germinacao', ico:'🌱', lbl:'Registrar germinação'},
+    {tipo:'outro', ico:'➕', lbl:'Outro'},
+  ];
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="acao-titulo">⚡ Iniciar atividade</div>
+    <div class="acao-grid">
+      ${atividades.map(a=>`
+        <div class="btn-acao" onclick="registrarAtivLote('${a.tipo}',${loteId})">
+          <span class="btn-acao-ico">${a.ico}</span>
+          <div class="btn-acao-lbl">${a.lbl}</div>
+        </div>`).join('')}
+    </div>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+async function registrarAtivLote(tipo, loteId){
+  try{
+    const r=await api('api_atividades.php',{acao:'registrar',tipo,lote_id:loteId});
+    if(!r.ok) throw new Error(r.erro);
+    toast(`✓ ${tipo} registrado! +${r.dados.score} pts`);
+    fecharModal('modalAcao',{target:document.getElementById('modalAcao')});
+    // Regar → vai para o mapa
+    if(tipo==='irrigacao'){
+      fecharModal('modalLote',{target:document.getElementById('modalLote')});
+      window.location.href=`app_mapa.html?modo=regar`;
+    }
+  }catch(e){toast(e.message);}
+}
+
+function abrirAcao(tipo,loteId){
+  const titulos={rustificacao:'Iniciar Rustificação',expedicao:'Registrar Expedição'};
+  let campos='';
+  if(tipo==='rustificacao') campos=`<div class="campo"><label>Dias planejados</label><input type="number" id="acaoDias" min="1" inputmode="numeric" placeholder="ex: 20"></div><div class="campo"><label>Observação</label><input type="text" id="acaoObs"></div>`;
+  else if(tipo==='expedicao') campos=`<div class="campo"><label>Quantidade</label><input type="number" id="acaoQtd" min="1" inputmode="numeric"></div><div class="campo"><label>Destino *</label><input type="text" id="acaoDest" placeholder="ex: Projeto Parque"></div><div class="campo"><label>Responsável</label><input type="text" id="acaoResp"></div>`;
+  document.getElementById('modalAcaoBox').innerHTML=`<div class="modal-handle"></div><div class="acao-titulo">${titulos[tipo]||tipo}</div>${campos}<button class="btn-salvar" onclick="confirmarAcao('${tipo}',${loteId})">Confirmar</button>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+async function confirmarAcao(tipo,loteId){
+  let body={lote_id:loteId};
+  try{
+    if(tipo==='rustificacao'){const dias=parseInt(document.getElementById('acaoDias')?.value)||null;const obs=document.getElementById('acaoObs')?.value||'';body={...body,acao:'iniciar_rustificacao',dias_planejados:dias,obs};}
+    else if(tipo==='expedicao'){const qtd=parseInt(document.getElementById('acaoQtd')?.value)||0;const dest=document.getElementById('acaoDest')?.value?.trim();const resp=document.getElementById('acaoResp')?.value||'';if(!qtd)throw new Error('Informe a quantidade');if(!dest)throw new Error('Destino obrigatório');body={...body,acao:'registrar_expedicao',quantidade:qtd,destino:dest,responsavel:resp};}
+    const r=await api('api_lotes.php',body);if(!r.ok)throw new Error(r.erro);
+    toast('✓ '+(r.dados.mensagem||'Registrado'));
+    fecharModal('modalAcao',{target:document.getElementById('modalAcao')});fecharModal('modalLote',{target:document.getElementById('modalLote')});await carregarLotes();
+  }catch(e){toast(e.message);}
+}
+
+function fecharModal(id,e){if(e.target===document.getElementById(id)) document.getElementById(id).classList.remove('vis');}
+
+// ── CHECAR VISITA SIMPLIFICADA ────────────────────────────────
+async function checarVisitaSimples(visitaId, resultado){
+  try{
+    const r=await api('api_lotes.php',{acao:'checar_visita',visita_id:visitaId,resultado});
+    if(!r.ok)throw new Error(r.erro);
+    toast(resultado==='ok'?'✓ Visita ok':'⚠️ Modo atenção ativado');
+    // Recarrega o lote atual
+    if(APP.loteAtual) await abrirLote(APP.loteAtual);
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+// ── PROCESSO DE TAXA ──────────────────────────────────────────
+function abrirIniciarTaxa(loteId, tipo){
+  const label = tipo==='germinacao' ? 'Iniciar germinação' : 'Iniciar adaptação';
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div style="padding:14px 18px 28px">
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2);margin-bottom:14px">${label}</div>
+      <div class="campo"><label>Quantidade inicial de mudas *</label>
+        <input type="number" id="taxaQtdIni" inputmode="numeric" min="1" placeholder="ex: 100">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Foto obrigatória *</label>
+        <button onclick="document.getElementById('inputCamTaxa').click()" id="btnFotoTaxa"
+          style="width:100%;padding:10px;background:var(--ar);border:1.5px dashed var(--czl);border-radius:9px;color:var(--cz);cursor:pointer;font-size:13px">
+          📷 Tirar foto do estado inicial
+        </button>
+        <div id="fotoTaxaPrev"></div>
+      </div>
+      <button class="btn-salvar" onclick="confirmarIniciarTaxa(${loteId},'${tipo}')">Iniciar processo</button>
+    </div>`;
+  APP._taxaFoto = null;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+function abrirRegistrarTaxa(loteId, tipo){
+  const label = tipo==='germinacao' ? 'Registrar germinação' : 'Registrar adaptação';
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div style="padding:14px 18px 28px">
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2);margin-bottom:14px">${label}</div>
+      <div class="campo"><label>Mudas vivas agora *</label>
+        <input type="number" id="taxaQtdVivas" inputmode="numeric" min="0" placeholder="ex: 87">
+      </div>
+      <div class="campo" id="campoJustTaxa" style="display:none">
+        <label>Justificativa para perda *</label>
+        <input type="text" id="taxaJust" placeholder="ex: Excesso de umidade, ataque de fungo...">
+      </div>
+      <button onclick="document.getElementById('inputCamTaxa').click()" id="btnFotoTaxa"
+        style="width:100%;padding:8px;background:var(--ar);border:1.5px dashed var(--czl);border-radius:9px;color:var(--cz);cursor:pointer;font-size:12px;margin-bottom:10px">
+        📷 Foto (opcional)
+      </button>
+      <div id="fotoTaxaPrev"></div>
+      <button class="btn-salvar" onclick="confirmarRegistrarTaxa(${loteId})">Salvar registro</button>
+    </div>`;
+  APP._taxaFoto = null;
+  // Mostra justificativa se qtd cair
+  setTimeout(()=>{
+    document.getElementById('taxaQtdVivas')?.addEventListener('input', function(){
+      document.getElementById('campoJustTaxa').style.display = '';
+    });
+  },100);
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+function abrirFecharTaxa(loteId){
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div style="padding:14px 18px 28px">
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2);margin-bottom:6px">Declarar crescendo</div>
+      <div style="font-size:12px;color:var(--cz);margin-bottom:14px;line-height:1.5">
+        Este é o número oficial. Mudas em <strong>CRESCENDO</strong> entram no relatório.
+      </div>
+      <div class="campo"><label>Quantidade final aprovada *</label>
+        <input type="number" id="taxaQtdFinal" inputmode="numeric" min="1" placeholder="ex: 78">
+      </div>
+      <div class="campo"><label>Observação (opcional)</label>
+        <input type="text" id="taxaObsFinal" placeholder="ex: Boa adaptação, perdas dentro do esperado">
+      </div>
+      <button class="btn-salvar" onclick="confirmarFecharTaxa(${loteId})">✓ Confirmar — entrar em crescendo</button>
+    </div>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+async function confirmarIniciarTaxa(loteId, tipo){
+  const qtd = parseInt(document.getElementById('taxaQtdIni')?.value)||0;
+  if(!qtd){toast('Informe a quantidade inicial');return;}
+  if(!APP._taxaFoto){toast('Foto obrigatória');return;}
+  try{
+    const r=await api('api_lotes.php',{acao:'iniciar_taxa',lote_id:loteId,tipo,qtd_inicial:qtd,foto_base64:APP._taxaFoto});
+    if(!r.ok)throw new Error(r.erro);
+    toast(r.dados.mensagem);
+    fecharModal('modalAcao',{target:document.getElementById('modalAcao')});
+    await abrirLote(loteId);
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+async function confirmarRegistrarTaxa(loteId){
+  const qtd = parseInt(document.getElementById('taxaQtdVivas')?.value);
+  if(isNaN(qtd)||qtd<0){toast('Informe a quantidade de mudas vivas');return;}
+  const just = document.getElementById('taxaJust')?.value?.trim()||null;
+  try{
+    const r=await api('api_lotes.php',{acao:'registrar_taxa',lote_id:loteId,qtd_vivas:qtd,justificativa:just,foto_base64:APP._taxaFoto||null});
+    if(!r.ok)throw new Error(r.erro);
+    toast(r.dados.mensagem);
+    fecharModal('modalAcao',{target:document.getElementById('modalAcao')});
+    await abrirLote(loteId);
+  }catch(e){toast(e.message);}
+}
+
+async function confirmarFecharTaxa(loteId){
+  const qtd = parseInt(document.getElementById('taxaQtdFinal')?.value)||0;
+  const obs = document.getElementById('taxaObsFinal')?.value?.trim()||null;
+  if(!qtd){toast('Informe a quantidade final');return;}
+  try{
+    const r=await api('api_lotes.php',{acao:'fechar_taxa',lote_id:loteId,qtd_final:qtd,obs});
+    if(!r.ok)throw new Error(r.erro);
+    toast(r.dados.mensagem);
+    fecharModal('modalAcao',{target:document.getElementById('modalAcao')});
+    await abrirLote(loteId);
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+// ── FINALIZAR BANDEJA ─────────────────────────────────────────
+async function finalizarBandeja(loteId){
+  const ok=confirm('♻️ Finalizar bandeja?\n\nA bandeja voltará para estado vazio e estará pronta para novo plantio.');
+  if(!ok)return;
+  try{
+    const r=await api('api_lotes.php',{acao:'finalizar_bandeja',lote_id:loteId});
+    if(!r.ok)throw new Error(r.erro);
+    toast(r.dados.mensagem);
+    fecharModal('modalLote',{target:document.getElementById('modalLote')});
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+// ── INICIAR RUSTIFICAÇÃO ──────────────────────────────────────
+async function abrirIniciarRust(loteId){
+  const ok=confirm('☀️ Iniciar rustificação?\n\nO lote entrará em rustificação. Após 3 meses o app avisará que está pronto para expedição.');
+  if(!ok)return;
+  try{
+    const r=await api('api_lotes.php',{acao:'iniciar_rustificacao',lote_id:loteId});
+    if(!r.ok)throw new Error(r.erro);
+    toast('✓ Rustificação iniciada');
+    await abrirLote(loteId);
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+// ── TESTE A/B ─────────────────────────────────────────────────
+function abrirTesteAB(loteId){
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div style="padding:14px 18px 28px">
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2);margin-bottom:6px">🔬 Novo Teste A/B</div>
+      <div style="font-size:12px;color:var(--cz);margin-bottom:14px;line-height:1.5">
+        O lote será dividido em dois. Lote A continua aqui, Lote B é criado na mesma posição.
+      </div>
+      <div class="campo"><label>Título do teste *</label>
+        <input type="text" id="abTitulo" placeholder="ex: Solo arenoso vs argiloso">
+      </div>
+      <div class="campo"><label>Tese (hipótese do teste) *</label>
+        <input type="text" id="abTese" placeholder="ex: Solo argiloso retém mais água e melhora adaptação">
+      </div>
+      <div class="campo"><label>Quantidade para Lote B *</label>
+        <input type="number" id="abQtdB" inputmode="numeric" min="1" placeholder="ex: 30">
+      </div>
+      <button class="btn-salvar" onclick="confirmarTesteAB(${loteId})">Criar teste A/B</button>
+    </div>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+async function confirmarTesteAB(loteId){
+  const titulo = document.getElementById('abTitulo')?.value?.trim();
+  const tese   = document.getElementById('abTese')?.value?.trim();
+  const qtdB   = parseInt(document.getElementById('abQtdB')?.value)||0;
+  if(!titulo){toast('Título é obrigatório');return;}
+  if(!tese){toast('Tese é obrigatória');return;}
+  if(!qtdB){toast('Informe a quantidade para o Lote B');return;}
+  try{
+    const r=await api('api_lotes.php',{acao:'criar_teste_ab',lote_id:loteId,titulo,tese,qtd_b:qtdB});
+    if(!r.ok)throw new Error(r.erro);
+    toast(r.dados.mensagem);
+    fecharModal('modalAcao',{target:document.getElementById('modalAcao')});
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+// ── MENU CRIAR (FAB) ──────────────────────────────────────────
+function abrirMenuCriar(){
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="acao-titulo">Criar novo</div>
+    <div class="acao-grid">
+      <div class="btn-acao" onclick="criarEmbalagem('sementeira')">
+        <span class="btn-acao-ico">🪴</span><div class="btn-acao-lbl">Sementeira</div></div>
+      <div class="btn-acao" onclick="criarEmbalagem('bandeja')">
+        <span class="btn-acao-ico">🔲</span><div class="btn-acao-lbl">Bandeja</div></div>
+      <div class="btn-acao" onclick="criarEmbalagem('saco')">
+        <span class="btn-acao-ico">🪣</span><div class="btn-acao-lbl">Saquinhos</div></div>
+      <div class="btn-acao" onclick="criarEmbalagem('tubete')">
+        <span class="btn-acao-ico">🔲</span><div class="btn-acao-lbl">Tubetes</div></div>
+    </div>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+async function criarEmbalagem(embalagem){
+  const label = {sementeira:'Sementeira',bandeja:'Bandeja',saco:'Saquinhos',tubete:'Tubetes'}[embalagem];
+  const precisaQtd = !['sementeira','bandeja'].includes(embalagem);
+
+  document.getElementById('modalAcaoBox').innerHTML=`
+    <div class="modal-handle"></div>
+    <div class="acao-titulo">Nova ${label}</div>
+    ${precisaQtd?`<div class="campo"><label>Quantidade *</label>
+      <input type="number" id="novaQtd" inputmode="numeric" min="1" placeholder="ex: 96"></div>`:''}
+    <div class="campo"><label>Espécie (opcional)</label>
+      <select id="novaEspecie">
+        <option value="">— definir depois —</option>
+        ${(APP.especies||[]).map(e=>`<option value="${e.id}">${e.nome_popular}</option>`).join('')}
+      </select>
+    </div>
+    <div class="campo"><label>Observação (opcional)</label>
+      <input type="text" id="novaObs" placeholder="ex: Coletada na matriz do cerrado">
+    </div>
+    <button class="btn-salvar" onclick="confirmarCriarEmbalagem('${embalagem}')">Criar ${label}</button>`;
+  document.getElementById('modalAcao').classList.add('vis');
+}
+
+async function confirmarCriarEmbalagem(embalagem){
+  const precisaQtd = !['sementeira','bandeja'].includes(embalagem);
+  const qtd = precisaQtd ? (parseInt(document.getElementById('novaQtd')?.value)||0) : 0;
+  if(precisaQtd && !qtd){toast('Informe a quantidade');return;}
+  const especie = document.getElementById('novaEspecie')?.value||null;
+  const obs = document.getElementById('novaObs')?.value?.trim()||null;
+  try{
+    const r=await api('api_lotes.php',{acao:'criar_vazio',embalagem,quantidade:qtd,especie_id:especie,obs});
+    if(!r.ok)throw new Error(r.erro);
+    toast(`✓ ${r.dados.mensagem}`);
+    fecharModal('modalAcao',{target:document.getElementById('modalAcao')});
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+// ── ENCERRAR SEMENTEIRA ───────────────────────────────────────
+async function encerrarSementeira(loteId){
+  const ok=confirm('🪴 Encerrar sementeira?\n\nEla voltará para estado vazio e estará disponível para novo uso.\n\nApenas gestores podem fazer isso.');
+  if(!ok)return;
+  try{
+    const r=await api('api_lotes.php',{acao:'encerrar_sementeira',lote_id:loteId});
+    if(!r.ok)throw new Error(r.erro);
+    toast(r.dados.mensagem);
+    fecharModal('modalLote',{target:document.getElementById('modalLote')});
+    await Promise.all([carregarLotes(),carregarDashboard()]);
+  }catch(e){toast(e.message);}
+}
+
+// ── GRÁFICO DA FICHA DO LOTE ──────────────────────────────────
+function _renderGrafico(lote, taxaData){
+  const W=320, H=160, PAD=28;
+
+  // ── Linha do tempo das fases ──
+  const FASES_ORD=['semeadura','germinacao','adaptacao','crescimento_tubete','crescimento_saco','rustificacao','expedicao'];
+  const FASES_COR={'semeadura':'#4caf70','germinacao':'#d4a017','adaptacao':'#a855c8',
+    'crescimento_tubete':'#2d6b45','crescimento_saco':'#2d6b45','rustificacao':'#c87c2a','expedicao':'#4090d0'};
+  const FASES_LBL={'semeadura':'Semeado','germinacao':'Germ.','adaptacao':'Adapt.',
+    'crescimento_tubete':'Crescendo','crescimento_saco':'Crescendo','rustificacao':'Rust.','expedicao':'Expedido'};
+
+  // Monta linha do tempo a partir do histórico
+  const hoje = new Date();
+  const semeadoEm = lote.data_semeadura ? new Date(lote.data_semeadura) : null;
+  const plantioEm = lote.data_plantio_atual ? new Date(lote.data_plantio_atual) : semeadoEm;
+  const criadoEm  = new Date(lote.criado_em || hoje);
+
+  const diasTotal = semeadoEm
+    ? Math.max(1, Math.round((hoje - semeadoEm) / 86400000))
+    : Math.max(1, Math.round((hoje - criadoEm) / 86400000));
+
+  // SVG linha do tempo
+  let svgTimeline = `<svg width="${W}" height="40" style="display:block;margin-bottom:8px">`;
+  // Linha base
+  svgTimeline += `<line x1="${PAD}" y1="20" x2="${W-PAD}" y2="20" stroke="#c8d8cc" stroke-width="2"/>`;
+
+  // Pontos de fase
+  const faseAtual = lote.fase_atual;
+  const faseIdx = FASES_ORD.indexOf(faseAtual);
+  const nFases = Math.max(faseIdx+1, 1);
+  const step = (W - PAD*2) / Math.max(nFases, 1);
+
+  FASES_ORD.slice(0, faseIdx+1).forEach((f, i) => {
+    const x = PAD + i * step;
+    const cor = FASES_COR[f] || '#c8d8cc';
+    svgTimeline += `<circle cx="${x}" cy="20" r="5" fill="${cor}"/>`;
+    svgTimeline += `<text x="${x}" y="36" text-anchor="middle" font-size="7" fill="#5a6860" font-family="DM Mono,monospace">${FASES_LBL[f]||f}</text>`;
+  });
+  svgTimeline += `</svg>`;
+
+  // ── Curva de taxa (se houver dados) ──
+  let svgCurva = '';
+  if(taxaData?.registros?.length >= 2){
+    const regs = taxaData.registros;
+    const qtdMax = Math.max(...regs.map(r=>parseInt(r.qtd_vivas)||0), 1);
+    const xScale = (W - PAD*2) / Math.max(regs.length - 1, 1);
+    const yScale = (H - PAD*2) / qtdMax;
+
+    const pontos = regs.map((r,i) => {
+      const x = PAD + i * xScale;
+      const y = H - PAD - (parseInt(r.qtd_vivas)||0) * yScale;
+      return `${x},${y}`;
+    }).join(' ');
+
+    const area = `${PAD},${H-PAD} ` + pontos + ` ${PAD + (regs.length-1)*xScale},${H-PAD}`;
+
+    svgCurva = `<svg width="${W}" height="${H}" style="display:block">
+      <!-- Fundo gradiente -->
+      <defs><linearGradient id="taxaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4caf70" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#4caf70" stop-opacity="0.02"/>
+      </linearGradient></defs>
+      <!-- Área -->
+      <polygon points="${area}" fill="url(#taxaGrad)"/>
+      <!-- Linha -->
+      <polyline points="${pontos}" fill="none" stroke="#4caf70" stroke-width="2"/>
+      <!-- Pontos -->
+      ${regs.map((r,i)=>{
+        const x=PAD+i*xScale;
+        const y=H-PAD-(parseInt(r.qtd_vivas)||0)*yScale;
+        const cor=r.qtd_perdidas>0?'#b03020':'#4caf70';
+        return `<circle cx="${x}" cy="${y}" r="4" fill="${cor}"/>
+          <text x="${x}" y="${H-PAD+10}" text-anchor="middle" font-size="7" fill="#5a6860" font-family="DM Mono,monospace">${r.dia_taxa??i}d</text>`;
+      }).join('')}
+      <!-- Eixo Y -->
+      <text x="${PAD-2}" y="${PAD}" text-anchor="end" font-size="7" fill="#5a6860" font-family="DM Mono,monospace">${qtdMax}</text>
+      <text x="${PAD-2}" y="${H-PAD}" text-anchor="end" font-size="7" fill="#5a6860" font-family="DM Mono,monospace">0</text>
+    </svg>`;
+  }
+
+  const temDados = taxaData?.registros?.length >= 2;
+  const semDados = !temDados
+    ? `<div style="text-align:center;padding:16px;color:var(--cz);font-family:'DM Mono',monospace;font-size:10px">
+        ${['germinacao','adaptacao'].includes(lote.fase_atual)
+          ? 'Registre pelo menos 2 medições para ver o gráfico de taxa.'
+          : 'Processo de taxa não iniciado ou encerrado.'}
+      </div>` : '';
+
+  const inicioStr = semeadoEm
+    ? `Semeado ${Math.round((hoje-semeadoEm)/86400000)} dias atrás`
+    : `Lote criado há ${Math.round((hoje-criadoEm)/86400000)} dias`;
+
+  return `<div style="padding:10px 0">
+    <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:6px">${inicioStr}</div>
+    ${svgTimeline}
+    ${temDados
+      ? `<div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin:10px 0 4px">Taxa de germinação/adaptação</div>
+         <div style="font-size:11px;color:var(--cz);margin-bottom:6px">${taxaData.registros.length} registros · inicial: ${taxaData.taxa_info?.taxa_qtd_inicial||'—'} · atual: ${taxaData.taxa_info?.taxa_qtd_atual||'—'}</div>
+         ${svgCurva}`
+      : semDados}
+  </div>`;
+}
+
+async function api(arq,dados){
+  const token=localStorage.getItem('vf_token');
+  const r=await fetch(`../api/${arq}`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},body:JSON.stringify(dados)});
+  if(r.status===401){window.location.href='app_login.html';}
+  return r.json();
+}
+function logout(){api('api_auth.php',{acao:'logout'}).catch(()=>{});localStorage.clear();window.location.href='app_login.html';}
+let _tt;function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('vis');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('vis'),2800);}
+
+async function navegar(destino){
+  try{
+    const token=localStorage.getItem('vf_token');
+    const r=await fetch('../api/api_ponto.php',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},body:JSON.stringify({acao:'hoje'})});
+    const d=await r.json();
+    if(d.ok && d.dados.tem_entrada_aberta){
+      window.location.href=destino;
+    } else {
+      const t=document.getElementById('toast');
+      if(t){t.textContent='🔒 Registre o ponto primeiro';t.classList.add('vis');setTimeout(()=>t.classList.remove('vis'),2800);}
+      else alert('Registre o ponto primeiro');
+    }
+  }catch(e){ window.location.href='app_ponto.html'; }
+}
+
+</script>
+</body>
+</html>

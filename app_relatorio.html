@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<!--
+  app_relatorio.html  (v2)
+  O que faz: Geração e visualização de relatórios mensais para
+             a Energisa MS.
+             AJUSTES v2:
+             - Perdas por causa no relatório e PDF
+             - Resumo de visitas do período
+             - Matriz de origem nas expedições
+             - PDF mais rico e fiel ao contrato
+  Depende de: api/api_relatorio.php (v2)
+  Nível mínimo: 4
+  Contrato: Energisa MS · 2026007601
+  Versão: 2.0 · Mai/2026
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3d2b">
+<title>Florescer · Relatório</title>
+<link rel="manifest" href="../manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --v1:#0d2018;--v2:#1a3d2b;--v3:#2d6b45;--v4:#4caf70;--v5:#86d4a0;
+  --vg:#c8ecd4;--vp:#e8f5ec;--am:#c87c2a;--amc:#fef3e6;
+  --al:#b03020;--alc:#fdecea;--br:#fdfcf8;--ar:#f4f0e8;
+  --ck:#e8e2d8;--pr:#1a1f1c;--cz:#5a6860;--czl:#c8d8cc;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--ar);color:var(--pr);overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;background:var(--ar);}
+
+.statusbar{background:var(--v2);padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sb-hora{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--vg);}
+.tophead{background:var(--v2);padding:0 20px 14px;flex-shrink:0;}
+.tophead h1{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--vg);}
+.tophead-sub{font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,236,212,.4);letter-spacing:.1em;text-transform:uppercase;margin-top:3px;}
+
+.content{flex:1;overflow-y:auto;scrollbar-width:none;padding:12px 16px 80px;}
+.content::-webkit-scrollbar{display:none;}
+
+.bottom-nav{background:var(--br);border-top:1px solid var(--czl);display:flex;padding:6px 0 20px;flex-shrink:0;}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px;text-decoration:none;}
+.nav-ico{font-size:20px;line-height:1;}
+.nav-lbl{font-size:9px;color:var(--cz);font-family:'DM Mono',monospace;letter-spacing:.04em;}
+.nav-i.on .nav-lbl{color:var(--v3);}
+
+/* Novo relatório */
+.novo-card{background:var(--v2);border-radius:16px;padding:16px;margin-bottom:14px;}
+.novo-titulo{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--vg);margin-bottom:12px;}
+.periodo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.campo label{display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:rgba(200,236,212,.4);margin-bottom:4px;}
+.campo input,.campo select,.campo textarea{width:100%;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--vg);outline:none;}
+.campo input:focus{border-color:var(--v4);}
+.campo textarea{resize:none;height:72px;color:var(--vg);}
+.btn-previa{width:100%;padding:11px;background:rgba(76,175,112,.2);border:1px solid rgba(76,175,112,.35);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--v5);cursor:pointer;margin-bottom:6px;}
+.btn-previa:active{background:rgba(76,175,112,.3);}
+.btn-gerar{width:100%;padding:12px;background:var(--v4);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--v1);cursor:pointer;display:none;}
+.btn-gerar.vis{display:block;}
+
+/* Prévia */
+.previa-box{background:rgba(255,255,255,.06);border-radius:10px;padding:12px;margin-bottom:10px;display:none;}
+.previa-box.vis{display:block;}
+.previa-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.pkpi{text-align:center;}
+.pkpi-num{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--v4);line-height:1;}
+.pkpi-lbl{font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.4);margin-top:2px;letter-spacing:.06em;}
+.previa-extras{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.previa-chip{font-family:'DM Mono',monospace;font-size:9px;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,.08);color:rgba(200,236,212,.6);}
+.aviso{background:rgba(176,48,32,.2);border-radius:6px;padding:6px 10px;font-size:11px;color:#ffb0a0;margin-bottom:5px;display:flex;align-items:center;gap:6px;}
+
+/* Lista de relatórios */
+.rel-card{background:var(--br);border-radius:12px;border:1px solid var(--czl);padding:12px 14px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:box-shadow .15s;}
+.rel-card:active{box-shadow:0 4px 14px rgba(0,0,0,.1);}
+.rel-ico{width:40px;height:40px;border-radius:10px;background:var(--vp);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.rel-ico.final{background:var(--amc);}
+.rel-info{flex:1;}
+.rel-titulo{font-size:13px;font-weight:600;color:var(--pr);}
+.rel-periodo{font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-top:2px;}
+.rel-num{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--v3);line-height:1;text-align:right;}
+.rel-num-sub{font-family:'DM Mono',monospace;font-size:8px;color:var(--cz);text-align:right;}
+.rel-status{font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;border-radius:4px;margin-top:3px;}
+.rel-status.rascunho{background:var(--ck);color:var(--cz);}
+.rel-status.finalizado{background:var(--amc);color:var(--am);}
+
+/* Modal */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-end;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-ov.vis{opacity:1;pointer-events:all;}
+.modal-box{background:var(--br);border-radius:20px 20px 0 0;width:100%;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);scrollbar-width:none;}
+.modal-box::-webkit-scrollbar{display:none;}
+.modal-ov.vis .modal-box{transform:translateY(0);}
+.modal-handle{width:36px;height:4px;background:var(--czl);border-radius:2px;margin:14px auto 0;}
+.sec-titulo-modal{font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:6px;}
+
+/* ============================================================
+   ÁREA DE IMPRESSÃO — PDF
+   ============================================================ */
+@media screen { .pdf-area { display: none; } }
+
+@media print {
+  body * { visibility: hidden; }
+  .pdf-area, .pdf-area * { visibility: visible; }
+  .pdf-area {
+    position: fixed; inset: 0;
+    display: block !important;
+    background: white;
+    font-family: 'DM Sans', sans-serif;
+    color: #111;
+    font-size: 11px;
+  }
+}
+
+.pdf-area { background: white; font-family: 'DM Sans', sans-serif; }
+
+.pdf-header{
+  background: #1a3d2b; padding: 18px 22px 14px;
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+.pdf-header-left h1{
+  font-family: 'Playfair Display', serif; font-size: 20px;
+  font-weight: 700; color: #c8ecd4; line-height: 1.1; margin-bottom: 3px;
+}
+.pdf-header-left p{
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  color: rgba(200,236,212,.5); letter-spacing: .08em; text-transform: uppercase;
+}
+.pdf-header-right{ text-align: right; }
+.pdf-contrato{ font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(200,236,212,.6); margin-bottom: 3px; }
+.pdf-periodo{ font-family: 'DM Mono', monospace; font-size: 11px; color: #c8ecd4; font-weight: 500; }
+
+.pdf-kpis{
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+  border-bottom: 2px solid #1a3d2b;
+}
+.pdf-kpi{
+  padding: 10px 8px; text-align: center;
+  border-right: 1px solid #e8e2d8;
+}
+.pdf-kpi:last-child{ border-right: none; }
+.pdf-kpi-num{
+  font-family: 'Playfair Display', serif; font-size: 24px;
+  font-weight: 700; color: #1a3d2b; line-height: 1; margin-bottom: 2px;
+}
+.pdf-kpi-lbl{
+  font-family: 'DM Mono', monospace; font-size: 7px;
+  color: #5a6860; letter-spacing: .08em; text-transform: uppercase;
+}
+
+.pdf-section{ padding: 10px 14px; border-bottom: 1px solid #e8e2d8; }
+.pdf-section-titulo{
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  text-transform: uppercase; letter-spacing: .1em;
+  color: #2d6b45; margin-bottom: 7px; padding-bottom: 3px;
+  border-bottom: 1px solid #e8f5ec;
+}
+
+/* Tabela espécies */
+.pdf-table{ width: 100%; border-collapse: collapse; font-size: 10px; }
+.pdf-table th{
+  font-family: 'DM Mono', monospace; font-size: 7px;
+  text-transform: uppercase; letter-spacing: .05em;
+  color: #5a6860; text-align: left; padding: 3px 5px;
+  background: #f4f0e8;
+}
+.pdf-table td{ padding: 4px 5px; border-bottom: 1px solid #f0ece4; }
+.pdf-table td.num{ font-family: 'DM Mono', monospace; text-align: right; }
+.pdf-table td.ok{ color: #2d6b45; font-weight: 600; }
+.pdf-table td.al{ color: #b03020; }
+
+/* Expedições */
+.pdf-exp-row{
+  display: flex; align-items: baseline; gap: 6px;
+  padding: 4px 0; border-bottom: 1px solid #f0ece4; font-size: 10px;
+}
+.pdf-exp-data{ font-family: 'DM Mono', monospace; font-size: 8px; color: #5a6860; flex-shrink: 0; width: 50px; }
+.pdf-exp-lote{ font-family: 'DM Mono', monospace; font-size: 8px; color: #5a6860; flex-shrink: 0; width: 80px; }
+.pdf-exp-esp{ flex: 1; font-weight: 500; }
+.pdf-exp-qtd{ font-family: 'DM Mono', monospace; font-size: 9px; color: #2d6b45; font-weight: 600; flex-shrink: 0; }
+.pdf-exp-dest{ font-size: 9px; color: #5a6860; flex-shrink: 0; max-width: 100px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Perdas por causa */
+.pdf-causa-row{
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; border-bottom: 1px solid #f0ece4; font-size: 10px;
+}
+.pdf-causa-nome{ flex: 1; text-transform: capitalize; }
+.pdf-causa-barra-wrap{ width: 80px; background: #f0ece4; border-radius: 3px; height: 5px; }
+.pdf-causa-barra{ background: #b03020; border-radius: 3px; height: 100%; }
+.pdf-causa-num{ font-family: 'DM Mono', monospace; font-size: 9px; color: #b03020; font-weight: 600; width: 30px; text-align: right; flex-shrink: 0; }
+
+/* Visitas */
+.pdf-visitas-grid{
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.pdf-visita-item{ text-align: center; background: #f4f0e8; border-radius: 6px; padding: 6px; }
+.pdf-visita-num{ font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #1a3d2b; }
+.pdf-visita-lbl{ font-family: 'DM Mono', monospace; font-size: 7px; color: #5a6860; }
+
+/* Obs */
+.pdf-obs{
+  background: #f4f0e8; border-radius: 5px; padding: 9px 11px;
+  font-size: 11px; color: #1a1f1c; line-height: 1.6; white-space: pre-wrap;
+}
+
+/* Rodapé */
+.pdf-footer{
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 8px 14px; background: #f4f0e8; border-top: 2px solid #1a3d2b;
+  font-size: 8px; color: #5a6860;
+}
+.pdf-footer-assinatura{
+  text-align: center; border-top: 1px solid #5a6860;
+  padding-top: 3px; margin-top: 18px; min-width: 140px; font-size: 8px;
+}
+
+/* Toast */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--v2);border:1px solid rgba(76,175,112,.2);border-radius:24px;padding:8px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--vg);z-index:200;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:90vw;}
+.toast.vis{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="statusbar">
+    <div class="sb-hora" id="sbHora">--:--</div>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,236,212,.35);">RELATÓRIO</div>
+  </div>
+
+  <div class="tophead">
+    <div>
+      <h1>Relatório</h1>
+      <div class="tophead-sub">Energisa MS · Contrato 2026007601</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- NOVO RELATÓRIO -->
+    <div class="novo-card">
+      <div class="novo-titulo">Novo relatório</div>
+
+      <div class="periodo-row">
+        <div class="campo"><label>Início</label><input type="date" id="periodoIni"></div>
+        <div class="campo"><label>Fim</label><input type="date" id="periodoFim"></div>
+      </div>
+
+      <div class="previa-box" id="previaBox">
+        <div class="previa-kpis" id="previaKpis"></div>
+        <div class="previa-extras" id="previaExtras"></div>
+        <div id="previaAvisos" style="margin-top:8px"></div>
+      </div>
+
+      <div class="campo" style="margin-bottom:8px">
+        <label>Observações do gestor</label>
+        <textarea id="obsGestor" placeholder="Ocorrências, contexto, destaques do período..."></textarea>
+      </div>
+      <div class="campo" style="margin-bottom:10px">
+        <label>Responsável técnico</label>
+        <input type="text" id="respTecnico" placeholder="Nome completo">
+      </div>
+
+      <button class="btn-previa" onclick="carregarPrevia()">🔍 Pré-visualizar dados</button>
+      <button class="btn-gerar" id="btnGerar" onclick="gerarRelatorio()">📋 Gerar relatório</button>
+    </div>
+
+    <!-- RELATÓRIOS ANTERIORES -->
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--cz);padding:8px 0 6px;display:flex;align-items:center;gap:8px;">Relatórios anteriores<span style="flex:1;height:1px;background:var(--czl);display:block"></span></div>
+    <div id="listaRels">
+      <div style="text-align:center;padding:20px;color:var(--cz);font-family:'DM Mono',monospace;font-size:11px">Carregando...</div>
+    </div>
+
+    <div style="height:24px"></div>
+  </div>
+
+  <div class="bottom-nav">
+    <a class="nav-i" href="app_ponto.html"><span class="nav-ico">📋</span><span class="nav-lbl">Ponto</span></a>
+    <a class="nav-i" href="app_mapa.html"><span class="nav-ico">🗺️</span><span class="nav-lbl">Mapa</span></a>
+    <a class="nav-i" href="app_lotes.html"><span class="nav-ico">🌱</span><span class="nav-lbl">Lotes</span></a>
+    <a class="nav-i" href="app_gestor.html"><span class="nav-ico">🎯</span><span class="nav-lbl">Gestão</span></a>
+    <a class="nav-i on" href="app_relatorio.html"><span class="nav-ico">📊</span><span class="nav-lbl">Relatório</span></a>
+  </div>
+</div>
+
+<!-- MODAL VISUALIZAR -->
+<div class="modal-ov" id="modalRel" onclick="fecharModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="modalRelConteudo"></div>
+  </div>
+</div>
+
+<!-- PDF (só na impressão) -->
+<div class="pdf-area" id="pdfArea" style="display:none"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const APP = { usuario: null, previaAtual: null, relAtual: null };
+
+(async function init() {
+  const u = localStorage.getItem('vf_usuario');
+  if (!u) { window.location.href='app_login.html'; return; }
+  APP.usuario = JSON.parse(u);
+  if (parseInt(APP.usuario.nivel) < 4) { window.location.href='app_ponto.html'; return; }
+
+  atualizarHora(); setInterval(atualizarHora, 30000);
+
+  // Datas padrão: mês atual
+  const hoje = new Date();
+  document.getElementById('periodoIni').value =
+    new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+  document.getElementById('periodoFim').value =
+    new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
+
+  await carregarLista();
+})();
+
+function atualizarHora() {
+  document.getElementById('sbHora').textContent =
+    new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ============================================================
+// PRÉVIA
+// ============================================================
+async function carregarPrevia() {
+  const ini = document.getElementById('periodoIni').value;
+  const fim = document.getElementById('periodoFim').value;
+  if (!ini||!fim) { toast('Selecione o período'); return; }
+
+  toast('Calculando...');
+
+  try {
+    const r = await api('api_relatorio.php',{acao:'previa',periodo_inicio:ini,periodo_fim:fim});
+    if (!r.ok) throw new Error(r.erro);
+    APP.previaAtual = r.dados;
+    renderPrevia(r.dados);
+    document.getElementById('btnGerar').classList.add('vis');
+  } catch(e) { toast('Erro: '+e.message); }
+}
+
+function renderPrevia(d) {
+  const kpis = [
+    {n:d.total_producao,  l:'Em produção'},
+    {n:d.total_expedidas, l:'Expedidas'},
+    {n:d.total_perdas,    l:'Perdas'},
+    {n:d.taxa_aproveitamento?d.taxa_aproveitamento+'%':'—', l:'Aproveit.'},
+    {n:d.horas_trabalhadas+'h', l:'Horas'},
+  ];
+
+  document.getElementById('previaKpis').innerHTML = kpis.map(k =>
+    `<div class="pkpi"><div class="pkpi-num">${k.n??'—'}</div><div class="pkpi-lbl">${k.l}</div></div>`
+  ).join('');
+
+  // Extras: visitas, perdas por causa
+  const extras = [];
+  if (d.visitas_resumo?.total_visitas)
+    extras.push(`👁️ ${d.visitas_resumo.total_visitas} visitas no período`);
+  if (d.perdas_por_causa?.length)
+    extras.push(`⚠️ ${d.perdas_por_causa.length} causa(s) de perda`);
+  if (d.lotes_ativos_periodo)
+    extras.push(`🌱 ${d.lotes_ativos_periodo} lote(s) ativos`);
+
+  document.getElementById('previaExtras').innerHTML = extras.map(e =>
+    `<span class="previa-chip">${e}</span>`
+  ).join('');
+
+  document.getElementById('previaAvisos').innerHTML = (d.avisos||[]).map(a =>
+    `<div class="aviso">⚠️ ${a}</div>`
+  ).join('');
+
+  document.getElementById('previaBox').classList.add('vis');
+}
+
+// ============================================================
+// GERAR
+// ============================================================
+async function gerarRelatorio() {
+  const ini = document.getElementById('periodoIni').value;
+  const fim = document.getElementById('periodoFim').value;
+  const obs  = document.getElementById('obsGestor').value.trim();
+  const resp = document.getElementById('respTecnico').value.trim();
+
+  const mesAno = new Date(ini).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const titulo = `Relatório Mensal — ${mesAno.charAt(0).toUpperCase()+mesAno.slice(1)}`;
+
+  toast('Gerando relatório...');
+
+  try {
+    const r = await api('api_relatorio.php',{
+      acao:'criar',periodo_inicio:ini,periodo_fim:fim,
+      titulo,obs_gestor:obs||null,responsavel_tecnico:resp||null,
+    });
+    if (!r.ok) throw new Error(r.erro);
+    toast('✓ Relatório criado');
+    await carregarLista();
+    await verRelatorio(r.dados.id);
+  } catch(e) { toast('Erro: '+e.message); }
+}
+
+// ============================================================
+// LISTA
+// ============================================================
+async function carregarLista() {
+  try {
+    const r = await api('api_relatorio.php',{acao:'listar'});
+    if (!r.ok) throw new Error(r.erro);
+    renderLista(r.dados.relatorios);
+  } catch(e) {
+    document.getElementById('listaRels').innerHTML =
+      `<div style="text-align:center;padding:20px;color:var(--cz)">Erro ao carregar</div>`;
+  }
+}
+
+function renderLista(rels) {
+  if (!rels.length) {
+    document.getElementById('listaRels').innerHTML =
+      '<div style="text-align:center;padding:20px;color:var(--cz);font-family:\'DM Mono\',monospace;font-size:11px">Nenhum relatório ainda.</div>';
+    return;
+  }
+  document.getElementById('listaRels').innerHTML = rels.map(r => {
+    const ini = new Date(r.periodo_inicio+'T12:00').toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
+    const fim = new Date(r.periodo_fim+'T12:00').toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
+    return `<div class="rel-card" onclick="verRelatorio(${r.id})">
+      <div class="rel-ico ${r.status}">${r.status==='finalizado'?'📋':'📝'}</div>
+      <div class="rel-info">
+        <div class="rel-titulo">${r.titulo}</div>
+        <div class="rel-periodo">${ini} → ${fim}</div>
+        <span class="rel-status ${r.status}">${r.status==='finalizado'?'Finalizado':'Rascunho'}</span>
+      </div>
+      <div>
+        <div class="rel-num">${r.total_mudas_expedidas||0}</div>
+        <div class="rel-num-sub">expedidas</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// VER RELATÓRIO
+// ============================================================
+async function verRelatorio(id) {
+  document.getElementById('modalRel').classList.add('vis');
+  document.getElementById('modalRelConteudo').innerHTML =
+    '<div style="padding:40px;text-align:center;color:var(--cz)">Carregando...</div>';
+
+  try {
+    const r = await api('api_relatorio.php',{acao:'buscar',id});
+    if (!r.ok) throw new Error(r.erro);
+    APP.relAtual = r.dados;
+    renderModalRel(r.dados);
+  } catch(e) {
+    document.getElementById('modalRelConteudo').innerHTML =
+      `<div style="padding:40px;text-align:center;color:var(--al)">${e.message}</div>`;
+  }
+}
+
+function renderModalRel({relatorio:rel, por_especie, expedicoes, atividades, perdas_causa, visitas_resumo}) {
+  const ini = new Date(rel.periodo_inicio+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const fim = new Date(rel.periodo_fim+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+
+  const espHtml = por_especie.map(e => `
+    <tr>
+      <td>${e.nome_popular}</td>
+      <td style="font-style:italic;font-size:10px;color:var(--cz)">${e.nome_cientifico||''}</td>
+      <td class="num">${e.mudas_em_producao}</td>
+      <td class="num ok">${e.mudas_expedidas}</td>
+      <td class="num al">${e.mudas_perdidas}</td>
+      <td class="num">${e.taxa_germinacao?e.taxa_germinacao+'%':'—'}</td>
+    </tr>
+  `).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--cz);padding:10px">Sem dados</td></tr>';
+
+  const expHtml = expedicoes.length
+    ? expedicoes.map(ex => `
+      <div class="pdf-exp-row" style="font-size:11px;padding:5px 0;border-bottom:1px solid var(--czl)">
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);width:50px;flex-shrink:0">
+          ${new Date(ex.data+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}
+        </span>
+        <span style="flex:1">${ex.especie_nome} · <span style="font-family:'DM Mono',monospace;font-size:9px">${ex.lote_codigo}</span></span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--v3);font-weight:600">${ex.quantidade}un</span>
+        <span style="font-size:10px;color:var(--cz);max-width:100px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${ex.destino}</span>
+      </div>
+    `).join('')
+    : '<div style="padding:8px 0;color:var(--cz);font-size:12px">Nenhuma expedição.</div>';
+
+  // Perdas por causa
+  const maxPerda = Math.max(...(perdas_causa||[]).map(p=>p.total),1);
+  const causaHtml = (perdas_causa||[]).length
+    ? perdas_causa.map(p => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--czl)">
+        <span style="flex:1;font-size:11px;text-transform:capitalize">${(p.causa_perda||'').replace('_',' ')}</span>
+        <div style="width:80px;background:var(--czl);border-radius:3px;height:5px">
+          <div style="background:var(--al);border-radius:3px;height:100%;width:${Math.round((p.total/maxPerda)*100)}%"></div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--al);width:30px;text-align:right">${p.total}</span>
+      </div>
+    `).join('')
+    : '<div style="font-size:12px;color:var(--cz);padding:8px 0">Sem causas registradas.</div>';
+
+  // Visitas
+  const v = visitas_resumo||{};
+  const visitasHtml = v.total_visitas > 0 ? `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px">
+      ${[
+        {n:v.total_visitas,l:'Total'},
+        {n:v.muito_bems||0,l:'Muito bem'},
+        {n:v.atencoes||0,l:'Atenção'},
+        {n:v.problemas||0,l:'Problema'},
+      ].map(i=>`<div style="background:var(--ar);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v3)">${i.n}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--cz)">${i.l}</div>
+      </div>`).join('')}
+    </div>
+  ` : '<div style="font-size:12px;color:var(--cz)">Nenhuma visita no período.</div>';
+
+  // Atividades
+  const nomeAtiv = {irrigacao:'Irrigação',saquinhos:'Saquinhos',tubetes:'Tubetes',semeadura:'Semeadura',repicagem:'Repicagem',germinacao:'Germinação',ronda:'Ronda',fitossanitario:'Fitossanitário',expedicao:'Expedição',outro:'Outros'};
+  const ativHtml = atividades.map(a =>
+    `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--czl);font-size:11px">
+      <span>${nomeAtiv[a.tipo]||a.tipo}</span>
+      <span style="font-family:'DM Mono',monospace">${a.vezes}× · ${a.funcionarios} func.</span>
+    </div>`
+  ).join()||'<div style="font-size:12px;color:var(--cz)">Sem atividades.</div>';
+
+  const nivel = parseInt(APP.usuario.nivel);
+
+  document.getElementById('modalRelConteudo').innerHTML = `
+    <div style="padding:14px 18px 0">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2)">${rel.titulo}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-top:3px">${ini} → ${fim}</div>
+        </div>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;padding:3px 10px;border-radius:4px;${rel.status==='finalizado'?'background:var(--amc);color:var(--am)':'background:var(--ck);color:var(--cz)'}">${rel.status==='finalizado'?'Finalizado':'Rascunho'}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:12px">
+        ${[
+          {n:rel.total_mudas_produzidas,l:'Produção'},
+          {n:rel.total_mudas_expedidas, l:'Expedidas'},
+          {n:rel.total_perdas,          l:'Perdas'},
+          {n:(rel.taxa_aproveitamento||'—')+(rel.taxa_aproveitamento?'%':''),l:'Aproveit.'},
+          {n:(rel.horas_trabalhadas||0)+'h',l:'Horas'},
+        ].map(k=>`<div style="background:var(--ar);border-radius:8px;padding:7px;text-align:center">
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--v3)">${k.n}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:7px;color:var(--cz)">${k.l}</div>
+        </div>`).join('')}
+      </div>
+
+      <div class="sec-titulo-modal">Por espécie</div>
+      <div style="overflow-x:auto;margin-bottom:12px">
+        <table class="pdf-table" style="font-size:11px">
+          <tr><th>Espécie</th><th>Científico</th><th>Produção</th><th>Expedidas</th><th>Perdas</th><th>Germ.</th></tr>
+          ${espHtml}
+        </table>
+      </div>
+
+      <div class="sec-titulo-modal">Expedições (${expedicoes.length})</div>
+      <div style="margin-bottom:12px">${expHtml}</div>
+
+      <div class="sec-titulo-modal">Perdas por causa</div>
+      <div style="margin-bottom:12px">${causaHtml}</div>
+
+      <div class="sec-titulo-modal">Visitas ao viveiro</div>
+      <div style="margin-bottom:12px">${visitasHtml}</div>
+
+      <div class="sec-titulo-modal">Atividades realizadas</div>
+      <div style="margin-bottom:12px">${ativHtml}</div>
+
+      ${rel.obs_gestor?`<div class="sec-titulo-modal">Observações</div><div class="pdf-obs" style="margin-bottom:12px">${rel.obs_gestor}</div>`:''}
+
+      <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:8px">
+        <button onclick="imprimirPDF(${rel.id})" style="padding:12px;background:var(--v2);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">📄 Exportar PDF</button>
+        ${rel.status!=='finalizado'&&nivel>=5?`<button onclick="finalizarRelatorio(${rel.id})" style="padding:12px;background:var(--amc);color:var(--am);border:1px solid var(--am);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">✓ Finalizar</button>`:''}
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// EXPORTAR PDF
+// ============================================================
+async function imprimirPDF(id) {
+  if (!APP.relAtual) return;
+  const { relatorio:rel, por_especie, expedicoes, perdas_causa, visitas_resumo } = APP.relAtual;
+
+  const ini = new Date(rel.periodo_inicio+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const fim = new Date(rel.periodo_fim+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+
+  const espRows = por_especie.map(e => `
+    <tr>
+      <td>${e.nome_popular}</td>
+      <td style="font-style:italic">${e.nome_cientifico||''}</td>
+      <td class="num">${e.mudas_em_producao}</td>
+      <td class="num ok">${e.mudas_expedidas}</td>
+      <td class="num al">${e.mudas_perdidas}</td>
+      <td class="num">${e.taxa_germinacao?e.taxa_germinacao+'%':'—'}</td>
+      <td class="num">${e.taxa_aproveitamento?e.taxa_aproveitamento+'%':'—'}</td>
+    </tr>
+  `).join('');
+
+  const expRows = expedicoes.map(ex => `
+    <div class="pdf-exp-row">
+      <span class="pdf-exp-data">${new Date(ex.data+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>
+      <span class="pdf-exp-lote">${ex.lote_codigo}</span>
+      <span class="pdf-exp-esp">${ex.especie_nome}</span>
+      <span class="pdf-exp-qtd">${ex.quantidade}un</span>
+      <span class="pdf-exp-dest">${ex.destino}</span>
+    </div>
+  `).join('');
+
+  const maxPerda = Math.max(...(perdas_causa||[]).map(p=>p.total),1);
+  const causaRows = (perdas_causa||[]).map(p => `
+    <div class="pdf-causa-row">
+      <span class="pdf-causa-nome">${(p.causa_perda||'').replace('_',' ')}</span>
+      <div class="pdf-causa-barra-wrap">
+        <div class="pdf-causa-barra" style="width:${Math.round((p.total/maxPerda)*100)}%"></div>
+      </div>
+      <span class="pdf-causa-num">${p.total}</span>
+    </div>
+  `).join('')||'<p style="font-size:10px;color:#5a6860">Sem causas registradas.</p>';
+
+  const v = visitas_resumo||{};
+  const visitasGrid = [
+    {n:v.total_visitas||0,l:'Total visitas'},
+    {n:v.muito_bems||0,l:'Muito bem'},
+    {n:v.atencoes||0,l:'Atenção'},
+    {n:v.problemas||0,l:'Problema'},
+  ].map(i=>`<div class="pdf-visita-item">
+    <div class="pdf-visita-num">${i.n}</div>
+    <div class="pdf-visita-lbl">${i.l}</div>
+  </div>`).join('');
+
+  document.getElementById('pdfArea').innerHTML = `
+    <div class="pdf-header">
+      <div class="pdf-header-left">
+        <h1>Viveiro Florescer</h1>
+        <p>Relatório de Produção de Mudas Nativas</p>
+        <p style="margin-top:3px">${rel.titulo}</p>
+      </div>
+      <div class="pdf-header-right">
+        <div class="pdf-contrato">Contrato ${rel.contrato||'2026007601'}</div>
+        <div class="pdf-contrato">${rel.empresa||'Energisa MS'}</div>
+        <div class="pdf-periodo">${ini}<br>até ${fim}</div>
+      </div>
+    </div>
+
+    <div class="pdf-kpis">
+      <div class="pdf-kpi"><div class="pdf-kpi-num">${rel.total_mudas_produzidas}</div><div class="pdf-kpi-lbl">Em produção</div></div>
+      <div class="pdf-kpi"><div class="pdf-kpi-num">${rel.total_mudas_expedidas}</div><div class="pdf-kpi-lbl">Expedidas</div></div>
+      <div class="pdf-kpi"><div class="pdf-kpi-num">${rel.total_perdas}</div><div class="pdf-kpi-lbl">Perdas</div></div>
+      <div class="pdf-kpi"><div class="pdf-kpi-num">${rel.taxa_aproveitamento?rel.taxa_aproveitamento+'%':'—'}</div><div class="pdf-kpi-lbl">Aproveit.</div></div>
+      <div class="pdf-kpi"><div class="pdf-kpi-num">${rel.horas_trabalhadas||0}h</div><div class="pdf-kpi-lbl">Horas trab.</div></div>
+    </div>
+
+    <div class="pdf-section">
+      <div class="pdf-section-titulo">Produção por espécie</div>
+      <table class="pdf-table">
+        <tr><th>Espécie</th><th>Nome científico</th><th>Em prod.</th><th>Expedidas</th><th>Perdas</th><th>Germ.</th><th>Aproveit.</th></tr>
+        ${espRows||'<tr><td colspan="7" style="text-align:center;color:#5a6860;padding:8px">Sem dados</td></tr>'}
+      </table>
+    </div>
+
+    <div class="pdf-section">
+      <div class="pdf-section-titulo">Expedições realizadas (${expedicoes.length})</div>
+      ${expRows||'<p style="font-size:10px;color:#5a6860">Nenhuma expedição no período.</p>'}
+    </div>
+
+    <div class="pdf-section">
+      <div class="pdf-section-titulo">Causas de perda de mudas</div>
+      ${causaRows}
+    </div>
+
+    ${v.total_visitas>0?`
+    <div class="pdf-section">
+      <div class="pdf-section-titulo">Visitas ao viveiro no período</div>
+      <div class="pdf-visitas-grid">${visitasGrid}</div>
+    </div>`:''}
+
+    ${rel.obs_gestor?`
+    <div class="pdf-section">
+      <div class="pdf-section-titulo">Observações do responsável técnico</div>
+      <div class="pdf-obs">${rel.obs_gestor}</div>
+    </div>`:''}
+
+    <div class="pdf-footer">
+      <div>
+        <div>Viveiro Florescer · Campo Grande MS</div>
+        <div>Gerado em ${new Date().toLocaleDateString('pt-BR')} via Sistema Florescer v2.0</div>
+      </div>
+      <div class="pdf-footer-assinatura">
+        <div style="margin-bottom:20px">&nbsp;</div>
+        <div>${rel.responsavel_tecnico||rel.gestor_nome||'Responsável técnico'}</div>
+        <div>Gestor do Viveiro Florescer</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('pdfArea').style.display = 'block';
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { document.getElementById('pdfArea').style.display='none'; }, 1000);
+  }, 200);
+}
+
+// ============================================================
+// FINALIZAR
+// ============================================================
+async function finalizarRelatorio(id) {
+  try {
+    const r = await api('api_relatorio.php',{acao:'finalizar',id});
+    if (!r.ok) throw new Error(r.erro);
+    toast('✓ Relatório finalizado');
+    fecharModal({target:document.getElementById('modalRel')});
+    await carregarLista();
+  } catch(e) { toast(e.message); }
+}
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function fecharModal(e) {
+  if (e.target===document.getElementById('modalRel'))
+    document.getElementById('modalRel').classList.remove('vis');
+}
+
+async function api(arq, dados) {
+  const token = localStorage.getItem('vf_token');
+  const r = await fetch(`../api/${arq}`,{
+    method:'POST', credentials:'include',
+    headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},
+    body:JSON.stringify(dados),
+  });
+  if (r.status===401){window.location.href='app_login.html';}
+  return r.json();
+}
+
+let toastTimer;
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('vis');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('vis'),2800);
+}
+</script>
+</body>
+</html>

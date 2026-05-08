@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<!--
+  app_especies.html  (v2 — refatorada)
+  O que faz: Biblioteca de espécies com gênero, escalas 1–6,
+             tolerância por fase, zonas de insolação (nível 4+).
+             Valores herdados do gênero aparecem em cinza/itálico.
+  Depende de: api/api_especies.php (v2)
+  Versão: 2.0 · Mai/2026
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3d2b">
+<title>Florescer · Espécies</title>
+<link rel="manifest" href="../manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --v1:#0d2018;--v2:#1a3d2b;--v3:#2d6b45;--v4:#4caf70;--v5:#86d4a0;
+  --vg:#c8ecd4;--vp:#e8f5ec;--am:#c87c2a;--amc:#fef3e6;
+  --al:#b03020;--alc:#fdecea;--az:#2a5080;--azc:#e8f0fa;
+  --rx:#5a3580;--rxc:#f0eaf8;--br:#fdfcf8;--ar:#f4f0e8;
+  --ck:#e8e2d8;--pr:#1a1f1c;--cz:#5a6860;--czl:#c8d8cc;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--ar);color:var(--pr);overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;background:var(--ar);}
+
+.statusbar{background:var(--v2);padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sb-hora{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--vg);}
+.tophead{background:var(--v2);padding:0 20px 14px;flex-shrink:0;}
+.tophead-row{display:flex;align-items:flex-end;justify-content:space-between;}
+.tophead h1{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--vg);}
+.tophead-sub{font-family:'DM Mono',monospace;font-size:9px;color:rgba(200,236,212,.4);letter-spacing:.1em;text-transform:uppercase;margin-top:3px;}
+.nivel-chip{background:rgba(76,175,112,.2);border:1px solid rgba(76,175,112,.35);border-radius:20px;padding:4px 12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--v5);}
+
+/* Tabs */
+.tab-bar{display:flex;background:var(--v2);border-top:1px solid rgba(255,255,255,.05);flex-shrink:0;}
+.tabi{flex:1;padding:9px 4px;text-align:center;cursor:pointer;border-bottom:2px solid transparent;}
+.tabi.on{border-bottom-color:var(--v4);}
+.tabi-ico{font-size:16px;display:block;margin-bottom:2px;}
+.tabi-lbl{font-family:'DM Mono',monospace;font-size:8px;color:rgba(200,236,212,.45);letter-spacing:.05em;}
+.tabi.on .tabi-lbl{color:var(--v4);}
+
+/* Filtro */
+.filtro-bar{display:flex;gap:6px;padding:8px 12px;background:var(--v2);border-top:1px solid rgba(255,255,255,.04);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.filtro-bar::-webkit-scrollbar{display:none;}
+.ftag{font-family:'DM Mono',monospace;font-size:9px;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.1);color:rgba(200,236,212,.5);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;}
+.ftag.on.todos{background:rgba(76,175,112,.15);border-color:rgba(76,175,112,.3);color:var(--vg);}
+.ftag.on.facil{background:rgba(76,175,112,.25);border-color:var(--v4);color:var(--v5);}
+.ftag.on.media{background:rgba(200,124,42,.25);border-color:var(--am);color:#ffd09a;}
+.ftag.on.dificil{background:rgba(176,48,32,.25);border-color:var(--al);color:#ffb0a0;}
+
+.content{flex:1;overflow-y:auto;scrollbar-width:none;padding:10px 14px 80px;}
+.content::-webkit-scrollbar{display:none;}
+
+.bottom-nav{background:var(--br);border-top:1px solid var(--czl);display:flex;padding:6px 0 20px;flex-shrink:0;}
+.nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px;text-decoration:none;}
+.nav-ico{font-size:20px;line-height:1;}
+.nav-lbl{font-size:9px;color:var(--cz);font-family:'DM Mono',monospace;letter-spacing:.04em;}
+.nav-i.on .nav-lbl{color:var(--v3);}
+
+/* ============================================================
+   CARDS DE ESPÉCIE
+   ============================================================ */
+.esp-card{background:var(--br);border-radius:14px;border:1px solid var(--czl);margin-bottom:7px;cursor:pointer;overflow:hidden;transition:box-shadow .15s;}
+.esp-card:active{box-shadow:0 4px 16px rgba(0,0,0,.1);}
+
+.esp-barra{height:3px;}
+.dif-facil  .esp-barra{background:var(--v4);}
+.dif-media  .esp-barra{background:var(--am);}
+.dif-dificil .esp-barra{background:var(--al);}
+
+.esp-top{display:flex;gap:10px;align-items:flex-start;padding:11px 12px 8px;}
+.esp-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.dif-facil   .esp-ico{background:var(--vp);}
+.dif-media   .esp-ico{background:var(--amc);}
+.dif-dificil .esp-ico{background:var(--alc);}
+.esp-info{flex:1;}
+.esp-nome{font-size:14px;font-weight:600;color:var(--pr);line-height:1.2;}
+.esp-cient{font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);font-style:italic;margin-top:1px;}
+.esp-genero{font-family:'DM Mono',monospace;font-size:8px;color:var(--cz);margin-top:1px;}
+
+/* Escalas visuais 1–6 */
+.escala-row{display:flex;gap:6px;padding:0 12px 10px;align-items:center;}
+.escala-item{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;}
+.escala-label{font-family:'DM Mono',monospace;font-size:7px;color:var(--cz);text-transform:uppercase;letter-spacing:.05em;}
+.escala-barra{width:100%;height:5px;background:var(--czl);border-radius:3px;overflow:hidden;}
+.escala-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.escala-fill.sol{background:linear-gradient(90deg,#f0e040,#ff8c00);}
+.escala-fill.agua{background:linear-gradient(90deg,#60b0e0,#2040a0);}
+.escala-fill.resist{background:linear-gradient(90deg,var(--al),var(--v4));}
+.escala-num{font-family:'DM Mono',monospace;font-size:8px;color:var(--cz);}
+.escala-num.herdado{color:var(--czl);font-style:italic;}
+
+/* Tags */
+.esp-tags{display:flex;gap:4px;flex-wrap:wrap;padding:0 12px 10px;}
+.etag{font-family:'DM Mono',monospace;font-size:9px;padding:2px 6px;border-radius:4px;}
+.etag.verde{background:var(--vp);color:var(--v3);}
+.etag.am{background:var(--amc);color:var(--am);}
+.etag.al{background:var(--alc);color:var(--al);}
+.etag.az{background:var(--azc);color:var(--az);}
+.etag.ck{background:var(--ck);color:var(--cz);}
+.etag.rx{background:var(--rxc);color:var(--rx);}
+
+/* ============================================================
+   CARD DE GÊNERO
+   ============================================================ */
+.gen-card{background:var(--br);border-radius:12px;border:1px solid var(--czl);margin-bottom:7px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s;}
+.gen-card:active{box-shadow:0 3px 12px rgba(0,0,0,.08);}
+.gen-nome{font-size:14px;font-weight:600;color:var(--pr);}
+.gen-familia{font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-top:2px;}
+.gen-info{display:flex;gap:8px;margin-top:8px;font-size:11px;color:var(--cz);}
+
+/* ============================================================
+   ZONAS DE INSOLAÇÃO
+   ============================================================ */
+.zona-card{border-radius:12px;border:1.5px solid;padding:11px 13px;margin-bottom:7px;cursor:pointer;}
+.zona-card.atencao{background:rgba(200,124,42,.08);border-color:rgba(200,124,42,.3);}
+.zona-card.critico{background:rgba(176,48,32,.08);border-color:rgba(176,48,32,.3);}
+.zona-nome{font-size:13px;font-weight:600;}
+.zona-card.atencao .zona-nome{color:var(--am);}
+.zona-card.critico .zona-nome{color:var(--al);}
+.zona-info{font-size:11px;color:var(--cz);margin-top:3px;}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:flex-end;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-ov.vis{opacity:1;pointer-events:all;}
+.modal-box{background:var(--br);border-radius:20px 20px 0 0;width:100%;max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);scrollbar-width:none;}
+.modal-box::-webkit-scrollbar{display:none;}
+.modal-ov.vis .modal-box{transform:translateY(0);}
+.modal-handle{width:36px;height:4px;background:var(--czl);border-radius:2px;margin:14px auto 0;}
+.modal-head{padding:12px 18px 0;}
+.modal-titulo{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2);margin-bottom:3px;}
+.modal-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);font-style:italic;}
+.modal-tabs{display:flex;border-bottom:1px solid var(--czl);padding:0 18px;margin-top:10px;overflow-x:auto;scrollbar-width:none;}
+.modal-tabs::-webkit-scrollbar{display:none;}
+.mtab{font-family:'DM Mono',monospace;font-size:10px;padding:8px 0;margin-right:18px;color:var(--cz);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;}
+.mtab.on{color:var(--v3);border-bottom-color:var(--v3);}
+.modal-content{padding:12px 18px 32px;}
+.tab-panel{display:none;}
+.tab-panel.vis{display:block;}
+
+/* Info grid modal */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.info-item{background:var(--ar);border-radius:8px;padding:8px 10px;}
+.info-label{font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:var(--cz);margin-bottom:2px;}
+.info-val{font-size:13px;font-weight:600;color:var(--pr);}
+.info-val.herdado{color:var(--czl);font-style:italic;font-size:11px;}
+.info-sub{font-size:10px;color:var(--cz);}
+
+/* Escalas grandes no modal */
+.escala-grande{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--czl);}
+.escala-grande-ico{font-size:16px;width:24px;text-align:center;flex-shrink:0;}
+.escala-grande-label{font-size:12px;color:var(--pr);flex:1;}
+.escala-grande-dots{display:flex;gap:4px;}
+.edot{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--czl);}
+.edot.on-sol{background:#f0c040;border-color:#d0a020;}
+.edot.on-agua{background:#60b0e0;border-color:#3080c0;}
+.edot.on-resist{background:var(--v4);border-color:var(--v3);}
+.edot.on-sensib{background:var(--al);border-color:#900010;}
+.edot.herdado{opacity:.4;}
+.escala-grande-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--cz);width:16px;text-align:right;flex-shrink:0;}
+
+/* Fases */
+.fase-item{border-radius:10px;background:var(--ar);padding:10px 12px;margin-bottom:6px;}
+.fase-nome{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--cz);margin-bottom:6px;}
+.fase-obs{font-size:11px;color:var(--cz);line-height:1.5;margin-top:6px;}
+
+/* Protocolo */
+.prot-card{background:var(--ar);border-radius:10px;padding:10px 12px;margin-bottom:6px;border-left:3px solid var(--v4);}
+.prot-card.teste{border-left-color:var(--rx);}
+.prot-etapa{font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:var(--cz);margin-bottom:4px;}
+.prot-nome{font-size:12px;font-weight:600;color:var(--pr);margin-bottom:6px;}
+.prot-texto{font-size:11px;color:var(--cz);line-height:1.7;white-space:pre-wrap;}
+
+/* Obs box */
+.obs-box{background:var(--ar);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--cz);line-height:1.7;margin-bottom:8px;}
+.obs-titulo{font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:5px;}
+
+/* Campos form */
+.campo{margin-bottom:10px;}
+.campo label{display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px;}
+.campo input,.campo select,.campo textarea{width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--pr);outline:none;}
+.campo input:focus,.campo select:focus{border-color:var(--v3);}
+.campo textarea{resize:none;height:72px;}
+.campos-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn-salvar{width:100%;padding:12px;background:var(--v2);color:var(--vg);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;}
+.btn-salvar:active{background:var(--v3);}
+
+/* Seletor escala 1–6 */
+.escala-sel{display:flex;gap:5px;margin-top:4px;}
+.escala-sel-btn{flex:1;height:32px;border-radius:6px;border:1.5px solid var(--czl);background:var(--ar);font-family:'DM Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:32px;transition:all .12s;}
+.escala-sel-btn.sel-sol{background:#f0e040;border-color:#d0a020;color:#5a4000;}
+.escala-sel-btn.sel-agua{background:#60b0e0;border-color:#3080c0;color:white;}
+.escala-sel-btn.sel-resist{background:var(--vp);border-color:var(--v4);color:var(--v3);}
+.escala-sel-btn.sel-sensib{background:var(--alc);border-color:var(--al);color:var(--al);}
+
+/* FAB */
+.fab{position:fixed;bottom:80px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--v3);border:none;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;z-index:30;}
+.fab:active{background:var(--v4);}
+
+/* Toast */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--v2);border:1px solid rgba(76,175,112,.2);border-radius:24px;padding:8px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--vg);z-index:200;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:90vw;}
+.toast.vis{transform:translateX(-50%) translateY(0);}
+.loading{text-align:center;padding:40px;color:var(--cz);font-family:'DM Mono',monospace;font-size:11px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="statusbar">
+    <div class="sb-hora" id="sbHora">--:--</div>
+    <div class="sb-icons"><span id="sbOnline">📶</span></div>
+  </div>
+
+  <div class="tophead">
+    <div class="tophead-row">
+      <div><h1>Espécies</h1><div class="tophead-sub">Biblioteca técnica</div></div>
+      <div class="nivel-chip" id="nivelChip">Nível --</div>
+    </div>
+  </div>
+
+  <!-- Tabs: Espécies / Gêneros / Zonas -->
+  <div class="tab-bar">
+    <div class="tabi on" onclick="mudarAba('especies',this)">
+      <span class="tabi-ico">🌿</span><span class="tabi-lbl">Espécies</span>
+    </div>
+    <div class="tabi" onclick="mudarAba('generos',this)">
+      <span class="tabi-ico">🌳</span><span class="tabi-lbl">Gêneros</span>
+    </div>
+    <div class="tabi" onclick="mudarAba('zonas',this)">
+      <span class="tabi-ico">☀️</span><span class="tabi-lbl">Insolação</span>
+    </div>
+  </div>
+
+  <!-- Filtro (só aparece na aba espécies) -->
+  <div class="filtro-bar" id="filtroBar">
+    <div class="ftag on todos" onclick="filtrar(this,'')">Todas</div>
+    <div class="ftag facil"   onclick="filtrar(this,'facil')">🟢 Fácil</div>
+    <div class="ftag media"   onclick="filtrar(this,'media')">🟡 Média</div>
+    <div class="ftag dificil" onclick="filtrar(this,'dificil')">🔴 Difícil</div>
+  </div>
+
+  <div class="content" id="conteudo">
+    <div class="loading">Carregando...</div>
+  </div>
+
+  <div class="bottom-nav">
+    <a class="nav-i" href="app_ponto.html"><span class="nav-ico">📋</span><span class="nav-lbl">Ponto</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_mapa.html')"><span class="nav-ico">🗺️</span><span class="nav-lbl">Mapa</span></a>
+    <a class="nav-i" href="#" onclick="navegar('app_lotes.html')"><span class="nav-ico">🌱</span><span class="nav-lbl">Lotes</span></a>
+    <a class="nav-i on" href="app_especies.html"><span class="nav-ico">🌿</span><span class="nav-lbl">Espécies</span></a>
+    <a class="nav-i" id="navRel" href="#" onclick="navegar('app_relatorio.html')" style="display:none"><span class="nav-ico">📊</span><span class="nav-lbl">Relatório</span></a>
+    <a class="nav-i" id="navGes" href="#" onclick="navegar('app_gestor.html')" style="display:none"><span class="nav-ico">🎯</span><span class="nav-lbl">Gestão</span></a>
+  </div>
+</div>
+
+<button class="fab" id="fabAdicionar" style="display:none" onclick="abrirFormEspecie(null)">＋</button>
+
+<!-- MODAL FORMULÁRIO CRIAR/EDITAR ESPÉCIE -->
+<div class="modal-ov" id="modalEsp" onclick="if(event.target===this)this.classList.remove('vis')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div id="modalFormEsp"></div>
+  </div>
+</div>
+
+<!-- MODAL DETALHE ESPÉCIE / GÊNERO / ZONA -->
+<div class="modal-ov" id="modalPrincipal" onclick="fecharModal('modalPrincipal',event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="modalConteudo"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const APP = {
+  usuario: null,
+  abaAtual: 'especies',
+  filtro: '',
+  especies: [],
+  generos: [],
+  zonas: [],
+};
+
+const EMOJIS = {IPE:'🌳',ARO:'🌿',ANG:'🌲',BAR:'🌰',SUC:'🍃',PEQ:'🫘'};
+const FASES_LABEL = {
+  semeadura:'Semeadura', germinacao:'Germinação',
+  crescimento_tubete:'Crescimento (tubete)', crescimento_saco:'Crescimento (saco)',
+  rustificacao:'Rustificação'
+};
+const PERM_ICON = {livre:'✅',supervisionado:'👁️',bloqueado:'🔒'};
+const nomesNivel = {1:'Iniciante',2:'Operacional',3:'Técnico',4:'Gestor',5:'Gestor'};
+
+(async function init() {
+  // Nível sempre da API para ser consistente entre abas
+  try {
+    const r = await api('api_auth.php', {acao:'verificar'});
+    if (!r.ok) { window.location.href='app_login.html'; return; }
+    APP.usuario = r.dados.usuario;
+    localStorage.setItem('vf_usuario', JSON.stringify(APP.usuario));
+  } catch(e) {
+    // 401 já redireciona; qualquer outro erro tenta localStorage
+    const u = localStorage.getItem('vf_usuario');
+    if (!u) { window.location.href='app_login.html'; return; }
+    APP.usuario = JSON.parse(u);
+  }
+
+  document.getElementById('nivelChip').textContent =
+    `Nível ${APP.usuario.nivel} · ${nomesNivel[APP.usuario.nivel]||''}`;
+  atualizarHora(); setInterval(atualizarHora, 30000);
+  document.getElementById('sbOnline').textContent = navigator.onLine ? '📶' : '📴';
+
+  const nivel = parseInt(APP.usuario.nivel);
+  if (nivel >= 4) document.getElementById('fabAdicionar').style.display = 'flex';
+  if (nivel >= 4) {
+    document.getElementById('navRel').style.display = 'flex';
+    document.getElementById('navGes').style.display = 'flex';
+  }
+
+  // Mostra erro visível se carregarEspecies falhar
+  try {
+    await carregarEspecies();
+  } catch(e) {
+    document.getElementById('conteudo').innerHTML =
+      `<div class="loading">Erro ao carregar espécies: ${e.message}</div>`;
+  }
+})();
+
+function atualizarHora() {
+  document.getElementById('sbHora').textContent =
+    new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ============================================================
+// ABAS
+// ============================================================
+async function mudarAba(aba, el) {
+  APP.abaAtual = aba;
+  document.querySelectorAll('.tabi').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('filtroBar').style.display = aba === 'especies' ? 'flex' : 'none';
+
+  if (aba === 'especies')  await carregarEspecies();
+  if (aba === 'generos')   await carregarGeneros();
+  if (aba === 'zonas')     await carregarZonas();
+}
+
+function filtrar(el, dif) {
+  document.querySelectorAll('.ftag').forEach(f => f.classList.remove('on'));
+  el.classList.add('on');
+  APP.filtro = dif;
+  renderEspecies();
+}
+
+// ============================================================
+// ESPÉCIES
+// ============================================================
+async function carregarEspecies() {
+  try {
+    const r = await api('api_especies.php', { acao:'listar_especies' });
+    if (!r.ok) throw new Error(r.erro);
+    APP.especies = r.dados.especies;
+    renderEspecies();
+  } catch(e) {
+    document.getElementById('conteudo').innerHTML =
+      `<div class="loading">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderEspecies() {
+  const lista = APP.especies.filter(e =>
+    !APP.filtro || e.dificuldade === APP.filtro
+  );
+
+  if (!lista.length) {
+    document.getElementById('conteudo').innerHTML =
+      '<div class="loading">Nenhuma espécie encontrada.</div>';
+    return;
+  }
+
+  document.getElementById('conteudo').innerHTML = lista.map(e => {
+    const emoji = EMOJIS[e.codigo] || '🌱';
+    const dif   = e.dificuldade;
+    const sol   = e.necessidade_sol;
+    const agua  = e.necessidade_agua;
+    const resist= e.resistencia_geral;
+    const solH  = e.necessidade_sol_herdado;
+    const aguaH = e.necessidade_agua_herdado;
+    const resH  = e.resistencia_geral_herdado;
+
+    const tags = [
+      `<span class="etag ck">${e.codigo}</span>`,
+      e.genero_nome ? `<span class="etag az">${e.genero_nome}</span>` : '',
+      e.bioma ? `<span class="etag ck">${e.bioma.split(',')[0].trim()}</span>` : '',
+      e.semente_recalcitrante ? `<span class="etag al">Recalcitrante</span>` : '',
+      e.tolera_repique_balde==0 ? `<span class="etag am">Direto ao solo</span>` : '',
+    ].filter(Boolean).join('');
+
+    const btnEdit = parseInt(APP.usuario?.nivel||0) >= 4
+      ? `<button style="flex-shrink:0;background:none;border:1px solid var(--czl);border-radius:6px;padding:4px 8px;font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);cursor:pointer"
+           onclick="event.stopPropagation();abrirFormEspecie(${e.id})">✏️ Editar</button>` : '';
+
+    return `<div class="esp-card dif-${dif}" onclick="abrirEspecie(${e.id})">
+      <div class="esp-barra"></div>
+      <div class="esp-top">
+        <div class="esp-ico">${emoji}</div>
+        <div class="esp-info">
+          <div class="esp-nome">${e.nome_popular}</div>
+          <div class="esp-cient">${e.nome_cientifico||''}</div>
+          ${e.genero_nome ? `<div class="esp-genero">Gênero: ${e.genero_nome}</div>` : ''}
+        </div>
+        ${btnEdit}
+      </div>
+      <div class="escala-row">
+        ${_escalaCard('☀️','Sol', sol, 6, 'sol', solH)}
+        ${_escalaCard('💧','Água', agua, 6, 'agua', aguaH)}
+        ${_escalaCard('💪','Resist.', resist, 6, 'resist', resH)}
+      </div>
+      <div class="esp-tags">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+function _escalaCard(ico, label, val, max, tipo, herdado) {
+  const pct = val ? Math.round((val/max)*100) : 0;
+  return `<div class="escala-item">
+    <div class="escala-label">${label}</div>
+    <div class="escala-barra"><div class="escala-fill ${tipo}" style="width:${pct}%"></div></div>
+    <div class="escala-num ${herdado?'herdado':''}">${val||'—'}${herdado?' ↑':''}</div>
+  </div>`;
+}
+
+// ============================================================
+// DETALHE ESPÉCIE
+// ============================================================
+async function abrirEspecie(id) {
+  document.getElementById('modalPrincipal').classList.add('vis');
+  document.getElementById('modalConteudo').innerHTML =
+    '<div class="loading" style="height:120px">Carregando...</div>';
+
+  try {
+    const r = await api('api_especies.php', { acao:'detalhe_especie', id });
+    if (!r.ok) throw new Error(r.erro);
+    renderModalEspecie(r.dados);
+  } catch(e) {
+    document.getElementById('modalConteudo').innerHTML =
+      `<div class="loading">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderModalEspecie({ especie:e, fases, protocolos, permissoes }) {
+  const dif = {facil:'🟢 Fácil',media:'🟡 Média',dificil:'🔴 Difícil'}[e.dificuldade];
+
+  // Painel Geral
+  const painelGeral = `
+    ${e.bioma ? `<div class="obs-titulo">Bioma</div><div class="obs-box">${e.bioma}</div>` : ''}
+    ${e.fitofisionomia ? `<div class="obs-titulo">Fitofisionomia</div><div class="obs-box">${e.fitofisionomia}</div>` : ''}
+    ${e.estados_ocorrencia ? `<div class="obs-titulo">Estados</div><div class="obs-box">${e.estados_ocorrencia}</div>` : ''}
+    <div class="info-grid">
+      <div class="info-item"><div class="info-label">Código</div><div class="info-val">${e.codigo}</div></div>
+      <div class="info-item"><div class="info-label">Dificuldade</div><div class="info-val">${dif}</div></div>
+      <div class="info-item"><div class="info-label">Porte adulto</div>
+        <div class="info-val ${e.porte_herdado?'herdado':''}">${{pequeno:'Pequeno',medio:'Médio',grande:'Grande',muito_grande:'Muito grande'}[e.porte]||'—'}${e.porte_herdado?' (gênero)':''}</div></div>
+      <div class="info-item"><div class="info-label">Altura máx.</div><div class="info-val">${e.altura_maxima_cm ? (e.altura_maxima_cm/100).toFixed(0)+'m' : '—'}</div></div>
+      <div class="info-item"><div class="info-label">Crescimento</div>
+        <div class="info-val ${e.crescimento_herdado?'herdado':''}">${{lento:'Lento',medio:'Médio',rapido:'Rápido'}[e.crescimento]||'—'}${e.crescimento_herdado?' (gênero)':''}</div></div>
+      <div class="info-item"><div class="info-label">Sucessão</div>
+        <div class="info-val ${e.sucessao_herdado?'herdado':''}">${{pioneira:'Pioneira',secundaria:'Secundária',climax:'Clímax'}[e.sucessao]||'—'}${e.sucessao_herdado?' (gênero)':''}</div></div>
+      <div class="info-item"><div class="info-label">Embalagem</div><div class="info-val">${{tubete:'Tubete',saco:'Saco 1L',ambos:'Ambos'}[e.embalagem_padrao]}</div></div>
+      <div class="info-item"><div class="info-label">Rust.</div><div class="info-val">${e.rust_dias_min}–${e.rust_dias_max} dias</div></div>
+    </div>
+    <div style="margin-bottom:10px">
+      ${_escalasGrandes(e)}
+    </div>
+    ${e.semente_recalcitrante ? '<div class="obs-box" style="background:var(--alc);color:var(--al)">⚠️ Semente recalcitrante — plantar logo após coleta. Não armazenar seco.</div>' : ''}
+    ${e.tolera_repique_balde==0 ? '<div class="obs-box" style="background:var(--amc);color:var(--am)">⚠️ Não tolera repique de balde — plantio direto recomendado.</div>' : ''}
+    ${e.obs_beneficiamento ? `<div class="obs-titulo">Beneficiamento</div><div class="obs-box">${e.obs_beneficiamento}</div>` : ''}
+    ${e.metodo_germinacao ? `<div class="obs-titulo">Método de germinação</div><div class="obs-box">${e.metodo_germinacao}</div>` : ''}
+    ${e.obs_tecnicas ? `<div class="obs-titulo">Observações técnicas</div><div class="obs-box">${e.obs_tecnicas}</div>` : ''}
+    ${e.obs_fitossanitario ? `<div class="obs-titulo">Fitossanitário</div><div class="obs-box">${e.obs_fitossanitario}</div>` : ''}
+    ${e.genero_obs_cultivo ? `<div class="obs-titulo">Cultivo do gênero</div><div class="obs-box" style="border-left:3px solid var(--czl);color:var(--cz)">${e.genero_obs_cultivo}</div>` : ''}
+  `;
+
+  // Painel Fases
+  const painelFases = fases.length
+    ? fases.map(f => `
+      <div class="fase-item">
+        <div class="fase-nome">${FASES_LABEL[f.fase]||f.fase}</div>
+        <div style="display:flex;gap:10px">
+          ${f.necessidade_sol  ? `<span style="font-size:11px">☀️ Sol: ${f.necessidade_sol}/6</span>` : ''}
+          ${f.necessidade_agua ? `<span style="font-size:11px">💧 Água: ${f.necessidade_agua}/6</span>` : ''}
+          ${f.sensibilidade    ? `<span style="font-size:11px">⚡ Sensib.: ${f.sensibilidade}/6</span>` : ''}
+        </div>
+        ${f.obs ? `<div class="fase-obs">${f.obs}</div>` : ''}
+      </div>
+    `).join('')
+    : '<div class="loading" style="padding:16px 0">Nenhuma fase registrada ainda.</div>';
+
+  // Painel Protocolos
+  const etapasOrdem = ['semeadura','repicagem','transplante','irrigacao','substrato','fitossanitario'];
+  const protHtml = protocolos.length
+    ? etapasOrdem.map(et => {
+      const p = protocolos.find(x => x.etapa === et && x.status === 'ativo');
+      if (!p) return '';
+      return `<div class="prot-card ${p.status}">
+        <div class="prot-etapa">${et}</div>
+        <div class="prot-nome">${p.nome}</div>
+        <div class="prot-texto">${p.instrucoes}</div>
+      </div>`;
+    }).join('')
+    : '<div class="loading" style="padding:16px 0">Nenhum protocolo cadastrado.</div>';
+
+  // Painel Permissões
+  const etapasExib = ['irrigacao','semeadura','repicagem','transplante','fitossanitario','expedicao'];
+  const permHtml = `
+    <div style="font-size:12px;color:var(--cz);margin-bottom:10px;line-height:1.6">
+      Suas permissões para esta espécie.
+    </div>
+    ${etapasExib.map(et => {
+      const perm = permissoes[et]||'bloqueado';
+      const ico  = PERM_ICON[perm];
+      const cls  = {livre:'color:var(--v3)',supervisionado:'color:var(--am)',bloqueado:'color:var(--al)'}[perm];
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--czl)">
+        <span style="font-size:18px">${ico}</span>
+        <span style="font-size:13px;flex:1">${et.charAt(0).toUpperCase()+et.slice(1)}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;${cls}">${
+          perm==='livre'?'Livre':perm==='supervisionado'?'Com supervisão':'Bloqueado'}</span>
+      </div>`;
+    }).join('')}
+  `;
+
+  document.getElementById('modalConteudo').innerHTML = `
+    <div class="modal-head">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-bottom:4px">${e.genero_nome||''} · ${dif}</div>
+      <div class="modal-titulo">${e.nome_popular}</div>
+      <div class="modal-sub">${e.nome_cientifico||''} · ${e.familia||''}</div>
+    </div>
+    <div class="modal-tabs">
+      <div class="mtab on" onclick="mudarTabModal('geral',this)">Geral</div>
+      <div class="mtab" onclick="mudarTabModal('fases',this)">Por fase</div>
+      <div class="mtab" onclick="mudarTabModal('protocolos',this)">Protocolos</div>
+      <div class="mtab" onclick="mudarTabModal('permissoes',this)">Permissões</div>
+    </div>
+    <div class="modal-content">
+      <div class="tab-panel vis" id="tab-geral">${painelGeral}</div>
+      <div class="tab-panel" id="tab-fases">${painelFases}</div>
+      <div class="tab-panel" id="tab-protocolos">${protHtml}</div>
+      <div class="tab-panel" id="tab-permissoes">${permHtml}</div>
+    </div>
+  `;
+}
+
+function _escalasGrandes(e) {
+  const escalas = [
+    {ico:'☀️', label:'Necessidade de sol', val:e.necessidade_sol, tipo:'sol', h:e.necessidade_sol_herdado},
+    {ico:'💧', label:'Necessidade de água', val:e.necessidade_agua, tipo:'agua', h:e.necessidade_agua_herdado},
+    {ico:'💪', label:'Resistência geral', val:e.resistencia_geral, tipo:'resist', h:e.resistencia_geral_herdado},
+    {ico:'🔁', label:'Sensib. transplante', val:e.sensibilidade_transplante, tipo:'sensib', h:false},
+  ];
+  return escalas.map(s => {
+    const limiar = s.val || 0;
+    const dots = [1,2,3,4,5,6].map(n =>
+      `<div class="edot ${n<=limiar?'on-'+s.tipo:''} ${s.h?'herdado':''}"></div>`
+    ).join('');
+    return `<div class="escala-grande">
+      <div class="escala-grande-ico">${s.ico}</div>
+      <div class="escala-grande-label">${s.label}${s.h?' <span style="font-size:9px;color:var(--czl)">(gênero)</span>':''}</div>
+      <div class="escala-grande-dots">${dots}</div>
+      <div class="escala-grande-num">${s.val||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// GÊNEROS
+// ============================================================
+async function carregarGeneros() {
+  try {
+    const r = await api('api_especies.php', { acao:'listar_generos' });
+    if (!r.ok) throw new Error(r.erro);
+    APP.generos = r.dados.generos;
+    renderGeneros();
+  } catch(e) {
+    document.getElementById('conteudo').innerHTML =
+      `<div class="loading">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderGeneros() {
+  if (!APP.generos.length) {
+    document.getElementById('conteudo').innerHTML =
+      '<div class="loading">Nenhum gênero cadastrado.</div>';
+    return;
+  }
+  document.getElementById('conteudo').innerHTML = APP.generos.map(g => `
+    <div class="gen-card" onclick="abrirGenero(${g.id})">
+      <div class="gen-nome">${g.nome}</div>
+      <div class="gen-familia">${g.familia||''} · ${g.total_especies} espécie(s)</div>
+      ${g.bioma ? `<div style="font-size:11px;color:var(--cz);margin-top:4px">${g.bioma}</div>` : ''}
+      <div class="gen-info">
+        ${g.necessidade_sol  ? `<span>☀️ ${g.necessidade_sol}/6</span>` : ''}
+        ${g.necessidade_agua ? `<span>💧 ${g.necessidade_agua}/6</span>` : ''}
+        ${g.resistencia_geral ? `<span>💪 ${g.resistencia_geral}/6</span>` : ''}
+        ${g.sucessao ? `<span>${{pioneira:'🌱 Pioneira',secundaria:'🌿 Secundária',climax:'🌳 Clímax'}[g.sucessao]||g.sucessao}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function abrirGenero(id) {
+  const g = APP.generos.find(x => x.id === id);
+  if (!g) return;
+  document.getElementById('modalPrincipal').classList.add('vis');
+  document.getElementById('modalConteudo').innerHTML = `
+    <div class="modal-head">
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--cz);margin-bottom:4px">${g.familia||''}</div>
+      <div class="modal-titulo">${g.nome}</div>
+    </div>
+    <div class="modal-content" style="padding-top:14px">
+      ${g.bioma ? `<div class="obs-titulo">Bioma</div><div class="obs-box">${g.bioma}</div>` : ''}
+      ${g.fitofisionomia ? `<div class="obs-titulo">Fitofisionomia</div><div class="obs-box">${g.fitofisionomia}</div>` : ''}
+      ${g.estados_ocorrencia ? `<div class="obs-titulo">Estados</div><div class="obs-box">${g.estados_ocorrencia}</div>` : ''}
+      <div class="info-grid">
+        ${g.porte?`<div class="info-item"><div class="info-label">Porte</div><div class="info-val">${{pequeno:'Pequeno',medio:'Médio',grande:'Grande',muito_grande:'Muito grande'}[g.porte]}</div></div>`:''}
+        ${g.crescimento?`<div class="info-item"><div class="info-label">Crescimento</div><div class="info-val">${{lento:'Lento',medio:'Médio',rapido:'Rápido'}[g.crescimento]}</div></div>`:''}
+        ${g.sucessao?`<div class="info-item"><div class="info-label">Sucessão</div><div class="info-val">${{pioneira:'Pioneira',secundaria:'Secundária',climax:'Clímax'}[g.sucessao]}</div></div>`:''}
+      </div>
+      ${g.obs_cultivo ? `<div class="obs-titulo">Comportamento geral</div><div class="obs-box">${g.obs_cultivo}</div>` : ''}
+      <div style="font-size:12px;color:var(--cz);margin-top:8px">
+        Escalas: ☀️ Sol ${g.necessidade_sol||'—'}/6 · 💧 Água ${g.necessidade_agua||'—'}/6 · 💪 Resist. ${g.resistencia_geral||'—'}/6
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// ZONAS DE INSOLAÇÃO
+// ============================================================
+async function carregarZonas() {
+  try {
+    const r = await api('api_especies.php', { acao:'listar_zonas' });
+    if (!r.ok) throw new Error(r.erro);
+    APP.zonas = r.dados.zonas;
+    renderZonas();
+  } catch(e) {
+    document.getElementById('conteudo').innerHTML =
+      `<div class="loading">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderZonas() {
+  const nivel = parseInt(APP.usuario.nivel);
+  const header = nivel >= 4
+    ? `<div style="background:var(--amc);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--am)">
+        Zonas de calor/sol que afetam lotes no mapa. Lotes em zonas inadequadas para a fase atual recebem ícone de atenção.
+       </div>`
+    : `<div style="background:var(--ar);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--cz)">
+        Zonas de insolação definidas pelo gestor.
+       </div>`;
+
+  const lista = APP.zonas.length
+    ? APP.zonas.map(z => {
+      const celulas = JSON.parse(z.grade_celulas||'[]');
+      return `<div class="zona-card ${z.nivel}" onclick="${nivel>=4?`abrirZona(${z.id})`:''}">
+        <div class="zona-nome">${z.nivel==='critico'?'🔴':'🟠'} ${z.nome}</div>
+        <div class="zona-info">${celulas.length} célula(s) no mapa${z.obs?' · '+z.obs:''}</div>
+      </div>`;
+    }).join('')
+    : '<div class="loading" style="padding:20px 0">Nenhuma zona definida ainda.</div>';
+
+  document.getElementById('conteudo').innerHTML = header + lista;
+}
+
+function abrirZona(id) {
+  const z = APP.zonas.find(x => x.id === id);
+  if (!z) return;
+  const celulas = JSON.parse(z.grade_celulas||'[]');
+  document.getElementById('modalPrincipal').classList.add('vis');
+  document.getElementById('modalConteudo').innerHTML = `
+    <div class="modal-head">
+      <div class="modal-titulo">${z.nome}</div>
+      <div class="modal-sub">${z.nivel==='critico'?'Zona crítica (vermelho)':'Zona de atenção (laranja)'}</div>
+    </div>
+    <div class="modal-content" style="padding-top:14px">
+      <div class="info-grid">
+        <div class="info-item"><div class="info-label">Células</div><div class="info-val">${celulas.length}</div></div>
+        <div class="info-item"><div class="info-label">Nível</div><div class="info-val">${z.nivel}</div></div>
+      </div>
+      ${z.obs ? `<div class="obs-titulo">Observação</div><div class="obs-box">${z.obs}</div>` : ''}
+      <div style="font-size:11px;color:var(--cz);margin-bottom:12px">
+        Posições: ${celulas.map(c=>`L${c.linha}C${c.col}`).join(', ')}
+      </div>
+      <button onclick="desativarZona(${z.id})" style="width:100%;padding:10px;background:var(--alc);color:var(--al);border:1px solid var(--al);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">
+        Desativar zona
+      </button>
+    </div>
+  `;
+}
+
+async function desativarZona(id) {
+  try {
+    const r = await api('api_especies.php', { acao:'desativar_zona', id });
+    if (!r.ok) throw new Error(r.erro);
+    toast('✓ Zona desativada');
+    fecharModal('modalPrincipal', {target:document.getElementById('modalPrincipal')});
+    await carregarZonas();
+  } catch(e) { toast(e.message); }
+}
+
+async function abrirFormEspecie(espId) {
+  // Garante gêneros carregados
+  if (!APP.generos.length) {
+    const r = await api('api_especies.php', { acao:'listar_generos' });
+    if (r.ok) APP.generos = r.dados.generos || [];
+  }
+
+  const esp = espId ? (APP.especies.find(e => e.id === espId) || {}) : {};
+  const generosOpts = APP.generos.map(g =>
+    `<option value="${g.id}" ${esp.genero_id == g.id ? 'selected' : ''}>${g.nome}</option>`
+  ).join('');
+
+  // Valores de escala atuais (usa _ref para pegar o valor próprio, não herdado)
+  const vSol    = esp.necessidade_sol_ref    ?? esp.necessidade_sol    ?? null;
+  const vAgua   = esp.necessidade_agua_ref   ?? esp.necessidade_agua   ?? null;
+  const vResist = esp.resistencia_geral_ref  ?? esp.resistencia_geral  ?? null;
+
+  function btnsEscala(tipo, atual) {
+    const cores = { sol:'#e8a020', agua:'#4090d0', resist:'var(--v3)' };
+    const bgs   = { sol:'#fef0d8', agua:'var(--azc)', resist:'var(--vp)' };
+    return [1,2,3,4,5,6].map(n => {
+      const sel = atual == n;
+      return `<button type="button"
+        style="flex:1;padding:9px 2px;border-radius:7px;border:1.5px solid ${sel?cores[tipo]:'var(--czl)'};
+               background:${sel?bgs[tipo]:'var(--ar)'};font-family:'DM Mono',monospace;font-size:13px;
+               font-weight:600;cursor:pointer;color:${sel?cores[tipo]:'var(--cz)'}"
+        onclick="selEscala('${tipo}',${n},this)">${n}</button>`;
+    }).join('');
+  }
+
+  document.getElementById('modalFormEsp').innerHTML = `
+    <div class="modal-handle"></div>
+    <div style="padding:14px 18px 36px">
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--v2);margin-bottom:14px">
+        ${espId ? 'Editar espécie' : 'Nova espécie'}
+      </div>
+
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Nome popular *</label>
+        <input id="fNome" type="text" value="${esp.nome_popular||''}" placeholder="ex: Ipê-amarelo"
+          style="width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;color:var(--pr);outline:none">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Código * (2-10 letras)</label>
+          <input id="fCod" type="text" value="${esp.codigo||''}" placeholder="ex: IPE" maxlength="10"
+            oninput="this.value=this.value.toUpperCase()"
+            style="width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;color:var(--pr);outline:none">
+        </div>
+        <div>
+          <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Dificuldade</label>
+          <select id="fDif" style="width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;color:var(--pr);outline:none">
+            <option value="facil"   ${esp.dificuldade==='facil'  ?'selected':''}>🟢 Fácil</option>
+            <option value="media"   ${!esp.dificuldade||esp.dificuldade==='media'?'selected':''}>🟡 Média</option>
+            <option value="dificil" ${esp.dificuldade==='dificil'?'selected':''}>🔴 Difícil</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);padding:8px 0 6px;border-top:1px solid var(--czl);margin-top:4px">
+        Opcional — complete depois se quiser
+      </div>
+
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Nome científico</label>
+        <input id="fCient" type="text" value="${esp.nome_cientifico||''}" placeholder="ex: Handroanthus albus"
+          style="width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;color:var(--pr);outline:none">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Gênero</label>
+          <select id="fGenero" style="width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:13px;color:var(--pr);outline:none">
+            <option value="">— sem gênero —</option>
+            ${generosOpts}
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Embalagem padrão</label>
+          <select id="fEmb" style="width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:13px;color:var(--pr);outline:none">
+            <option value="tubete" ${esp.embalagem_padrao==='tubete'||!esp.embalagem_padrao?'selected':''}>🔲 Tubete</option>
+            <option value="saco"   ${esp.embalagem_padrao==='saco'  ?'selected':''}>🪣 Saco</option>
+            <option value="ambos"  ${esp.embalagem_padrao==='ambos' ?'selected':''}>Ambos</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div>
+          <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Rust. mínima (dias)</label>
+          <input id="fRustMin" type="number" inputmode="numeric" value="${esp.rust_dias_min||''}" placeholder="ex: 20"
+            style="width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;color:var(--pr);outline:none">
+        </div>
+        <div>
+          <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:4px">Rust. máxima (dias)</label>
+          <input id="fRustMax" type="number" inputmode="numeric" value="${esp.rust_dias_max||''}" placeholder="ex: 40"
+            style="width:100%;background:var(--ar);border:1.5px solid var(--czl);border-radius:8px;padding:9px 11px;font-size:14px;color:var(--pr);outline:none">
+        </div>
+      </div>
+
+      <div style="font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);padding:8px 0 10px;border-top:1px solid var(--czl)">
+        Escalas 1–6 (1 = mínimo · 6 = máximo)
+      </div>
+
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:6px">☀️ Necessidade de sol</label>
+        <div style="display:flex;gap:4px" id="selSol">${btnsEscala('sol', vSol)}</div>
+        <div style="font-size:10px;color:var(--cz);margin-top:3px">1 = sombra total · 6 = sol pleno obrigatório</div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:6px">💧 Necessidade de água</label>
+        <div style="display:flex;gap:4px" id="selAgua">${btnsEscala('agua', vAgua)}</div>
+        <div style="font-size:10px;color:var(--cz);margin-top:3px">1 = tolerante à seca · 6 = precisa de muita água</div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--cz);margin-bottom:6px">💪 Resistência geral</label>
+        <div style="display:flex;gap:4px" id="selResist">${btnsEscala('resist', vResist)}</div>
+        <div style="font-size:10px;color:var(--cz);margin-top:3px">1 = muito sensível · 6 = muito resistente</div>
+      </div>
+
+      <button onclick="salvarEspecie(${espId||0})"
+        style="width:100%;padding:13px;background:var(--v2);color:var(--vg);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">
+        ${espId ? 'Salvar alterações' : 'Criar espécie'}
+      </button>
+    </div>`;
+
+  // Guarda valores de escala selecionados
+  window._escSol    = vSol;
+  window._escAgua   = vAgua;
+  window._escResist = vResist;
+
+  document.getElementById('modalEsp').classList.add('vis');
+}
+
+function selEscala(tipo, val, el) {
+  if (tipo === 'sol')    window._escSol    = val;
+  if (tipo === 'agua')   window._escAgua   = val;
+  if (tipo === 'resist') window._escResist = val;
+
+  const cores  = { sol:'#e8a020', agua:'#4090d0', resist:'var(--v3)' };
+  const bgs    = { sol:'#fef0d8', agua:'var(--azc)', resist:'var(--vp)' };
+  const ids    = { sol:'selSol', agua:'selAgua', resist:'selResist' };
+  const cor    = cores[tipo], bg = bgs[tipo];
+
+  document.getElementById(ids[tipo]).querySelectorAll('button').forEach(b => {
+    b.style.borderColor = 'var(--czl)';
+    b.style.background  = 'var(--ar)';
+    b.style.color       = 'var(--cz)';
+  });
+  el.style.borderColor = cor;
+  el.style.background  = bg;
+  el.style.color       = cor;
+}
+
+async function salvarEspecie(espId) {
+  const nome = document.getElementById('fNome')?.value?.trim();
+  const cod  = document.getElementById('fCod')?.value?.trim().toUpperCase();
+  if (!nome) { toast('Nome popular é obrigatório'); return; }
+  if (!cod || cod.length < 2) { toast('Código é obrigatório (mínimo 2 letras)'); return; }
+
+  const dados = {
+    acao: 'salvar_especie',
+    nome_popular:     nome,
+    codigo:           cod,
+    dificuldade:      document.getElementById('fDif')?.value || 'media',
+    nome_cientifico:  document.getElementById('fCient')?.value?.trim() || null,
+    genero_id:        document.getElementById('fGenero')?.value || null,
+    embalagem_padrao: document.getElementById('fEmb')?.value || 'tubete',
+    rust_dias_min:    parseInt(document.getElementById('fRustMin')?.value) || null,
+    rust_dias_max:    parseInt(document.getElementById('fRustMax')?.value) || null,
+    necessidade_sol:  window._escSol    || null,
+    necessidade_agua: window._escAgua   || null,
+    resistencia_geral:window._escResist || null,
+  };
+  if (espId) dados.id = espId;
+
+  try {
+    const r = await api('api_especies.php', dados);
+    if (!r.ok) throw new Error(r.erro);
+    toast(`✓ ${r.dados.mensagem}`);
+    document.getElementById('modalEsp').classList.remove('vis');
+    await carregarEspecies();
+  } catch(e) { toast(e.message); }
+}
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function mudarTabModal(id, el) {
+  document.querySelectorAll('.mtab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('vis'));
+  el.classList.add('on');
+  document.getElementById('tab-'+id).classList.add('vis');
+}
+
+function fecharModal(id, e) {
+  if (e.target === document.getElementById(id)) {
+    document.getElementById(id).classList.remove('vis');
+  }
+}
+
+async function api(arq, dados) {
+  const token = localStorage.getItem('vf_token');
+  const r = await fetch(`../api/${arq}`, {
+    method:'POST', credentials:'include',
+    headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},
+    body:JSON.stringify(dados),
+  });
+  if (r.status === 401) {
+    window.location.href = 'app_login.html';
+    // Para a execução — não tenta parsear JSON
+    throw new Error('Sessão expirada. Redirecionando...');
+  }
+  return r.json();
+}
+
+function logout() {
+  api('api_auth.php',{acao:'logout'}).catch(()=>{});
+  localStorage.clear(); window.location.href='app_login.html';
+}
+
+let toastTimer;
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('vis');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('vis'),2800);
+}
+
+async function navegar(destino){
+  try{
+    const token=localStorage.getItem('vf_token');
+    const r=await fetch('../api/api_ponto.php',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json',...(token?{'X-VF-TOKEN':token}:{})},body:JSON.stringify({acao:'hoje'})});
+    const d=await r.json();
+    if(d.ok && d.dados.tem_entrada_aberta){
+      window.location.href=destino;
+    } else {
+      const t=document.getElementById('toast');
+      if(t){t.textContent='🔒 Registre o ponto primeiro';t.classList.add('vis');setTimeout(()=>t.classList.remove('vis'),2800);}
+      else alert('Registre o ponto primeiro');
+    }
+  }catch(e){ window.location.href='app_ponto.html'; }
+}
+
+</script>
+</body>
+</html>
